@@ -28,8 +28,6 @@ git merge main
 
 # Resolve any conflicts if necessary
 
-# Push your updated branch if needed
-git push origin your-feature-branch
 ```
 
 ### Before Pushing Your Changes
