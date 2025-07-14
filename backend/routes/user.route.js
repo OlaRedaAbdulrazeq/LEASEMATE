@@ -5,7 +5,7 @@ const {
   getProfile,
   updateProfile,
   uploadAvatar,uploadVerification
-} = require("../controllers/user.controller");
+} = require("../controllers/userController");
 const { protect } = require("../middlewares/auth.middleware");
 const upload = require("../middlewares/upload.middleware");
 

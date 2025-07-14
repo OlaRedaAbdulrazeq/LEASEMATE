@@ -1,6 +1,6 @@
 const User = require("../models/user.model");
 const generateToken = require("../utils/generateToken");
-const uploadToCloudinary = require("../utils/uploadToCloudinary");
+const uploadToCloudinary = require("../utils/uploadtoCloudinary");
 
 // Register
 const register = async (req, res) => {
@@ -31,6 +31,7 @@ const login = async (req, res) => {
       name: user.name,
       role: user.role,
       token: generateToken(user._id),
+      verificationStatus: user.verificationStatus,
     });
   } else {
     res.status(401).json({ message: "Invalid credentials" });
