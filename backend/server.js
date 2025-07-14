@@ -4,6 +4,7 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const userRoutes = require('./routes/user.route');
 const adminRoutes = require('./routes/admin.route');
+const unitRoutes = require('./routes/unit.route')
 const path = require('path');
 
 const app = express();
@@ -25,6 +26,7 @@ app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/units', unitRoutes)
 
 //global error handler
 app.use((error, req, res, next) => {

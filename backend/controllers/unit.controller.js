@@ -3,6 +3,9 @@ const Unit = require("../models/unit.model");
 const httpStatusText = require("../utils/httpStatusText");
 const appError = require("../utils/appError");
 const { validationResult } = require("express-validator");
+const uploadToCloudinary = require("../utils/uploadtoCloudinary");
+const deleteFromCloudinary = require("../utils/deleteFromCloudinary");
+const extractPublicId = require("../utils/extractPublicId");
 
 const getAllUnits = asyncWrapper(async (req, res) => {
   const units = await Unit.find();
@@ -25,26 +28,104 @@ const addUnit = asyncWrapper(async (req, res, next) => {
     return next(error);
   }
 
-  const unit = new Unit(req.body);
+  if (!req.files || req.files.length === 0) {
+    return next(appError.create("At least one image is required", 400, httpStatusText.FAIL));
+  }
+
+  const imageUploadPromises = req.files.map(file =>
+    uploadToCloudinary(file.buffer, "LeaseMate/units")
+  );
+
+  const uploadedImageUrls = await Promise.all(imageUploadPromises);
+
+  const unit = new Unit({
+    ...req.body,
+    images: uploadedImageUrls,
+  });
+
   await unit.save();
 
-  res
-    .status(201)
-    .json({ status: httpStatusText.SUCCESS, data: { unit: unit } });
-});
-
-const updateUnit = asyncWrapper(async (req, res) => {
-  const { id } = req.params;
-  const unit = await Unit.findByIdAndUpdate(id, {
-    $set: { ...req.body },
+  res.status(201).json({
+    status: httpStatusText.SUCCESS,
+    data: { unit },
   });
-  res.status(200).json({ status: httpStatusText.SUCCESS, data: { unit: unit } });
 });
 
-const deleteUnit = asyncWrapper(async (req, res) => {
+const updateUnit = asyncWrapper(async (req, res, next) => {
   const { id } = req.params;
-  await Unit.findByIdAndDelete(id)
-  res.status(200).json({status: httpStatusText.SUCCESS, data: null})
+  const updates = req.body;
+  const files = req.files;
+
+  const unit = await Unit.findById(id);
+  if (!unit) {
+    return next(appError.create("Unit not found", 404, httpStatusText.FAIL));
+  }
+
+  // If new images are uploaded, delete old ones first
+  if (files && files.length > 0) {
+    const oldImagePublicIds = unit.images.map(url => extractPublicId(url));
+    
+    await Promise.all(oldImagePublicIds.map(id => deleteFromCloudinary(id)));
+
+    const newImageUrls = await Promise.all(
+      files.map(file => uploadToCloudinary(file.buffer, "LeaseMate/units"))
+    );
+    updates.images = newImageUrls;
+  }
+
+  Object.assign(unit, updates);
+  await unit.save();
+
+  res.status(200).json({
+    status: httpStatusText.SUCCESS,
+    data: { unit },
+  });
 });
 
-module.exports = { getAllUnits, getUnit, addUnit, updateUnit, deleteUnit };
+const deleteUnit = asyncWrapper(async (req, res, next) => {
+  const { id } = req.params;
+
+  const unit = await Unit.findById(id);
+  if (!unit) {
+    return next(appError.create("Unit not found", 404, httpStatusText.FAIL));
+  }
+
+  const publicIds = unit.images.map((url) => extractPublicId(url));
+  await Promise.all(publicIds.map((id) => deleteFromCloudinary(id)));
+
+  await unit.deleteOne();
+
+  res.status(200).json({
+    status: httpStatusText.SUCCESS,
+    message: "Unit and images deleted successfully",
+  });
+});
+
+const deleteUnitImage = asyncWrapper(async (req, res, next) => {
+  const { id } = req.params;
+  const { imageUrl } = req.body;
+
+  const unit = await Unit.findById(id);
+  if (!unit) {
+    return next(appError.create("Unit not found", 404, httpStatusText.FAIL));
+  }
+
+  if (!unit.images.includes(imageUrl)) {
+    return next(appError.create("Image not found in unit", 404, httpStatusText.FAIL));
+  }
+
+  const publicId = extractPublicId(imageUrl);
+  await deleteFromCloudinary(publicId);
+
+  unit.images = unit.images.filter((url) => url !== imageUrl);
+  await unit.save();
+
+  res.status(200).json({
+    status: httpStatusText.SUCCESS,
+    message: "Image deleted successfully",
+    data: { images: unit.images },
+  });
+});
+
+
+module.exports = { getAllUnits, getUnit, addUnit, updateUnit, deleteUnit, deleteUnitImage };

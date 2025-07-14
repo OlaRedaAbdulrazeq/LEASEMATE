@@ -26,13 +26,7 @@ const unitSchema = new mongoose.Schema({
     ref: "User",
     // required: true
   },
-  //TODO: uncomment when property model is done
-  //   propertyId:{
-  //     type: mongoose.Schema.Types.ObjectId,
-  //     ref:"Property",
-  //     default: null
-  //   },
-
+  
   pricePerMonth: {
     type: Number,
     // required: true,
