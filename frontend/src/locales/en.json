@@ -75,5 +75,22 @@
     "idImage": "ID Image",
     "selfieImage": "Selfie Image",
     "logout": "Logout"
-  }
+  },
+  "notifications": {
+  "pageTitle": "Notifications",
+  "pageSubtitle": "Stay updated with important alerts and reminders.",
+  "filterLabel": "Filter by:",
+  "all": "All",
+  "payments": "Payments",
+  "maintenance": "Maintenance",
+  "contracts": "Contracts",
+  "general": "General",
+  "verification": "Verification",
+  "markAllRead": "Mark all as read",
+  "noNotifications": "No notifications found.",
+  "from": "From:",
+  "markAsRead": "Mark as read",
+  "read": "Read"
+
+}
 } 

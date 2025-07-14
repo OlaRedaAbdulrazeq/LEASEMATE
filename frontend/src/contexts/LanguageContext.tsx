@@ -94,6 +94,22 @@ const translations = {
       language: 'Language',
       english: 'English',
       arabic: 'Arabic'
+    },
+    notifications: {
+      pageTitle: "Notifications",
+      pageSubtitle: "Stay updated with important alerts and reminders.",
+      filterLabel: "Filter by:",
+      all: "All",
+      payments: "Payments",
+      maintenance: "Maintenance",
+      contracts: "Contracts",
+      general: "General",
+      verification: "Verification",
+      markAllRead: "Mark all as read",
+      noNotifications: "No notifications found.",
+      from: "From:",
+      markAsRead: "Mark as read",
+      read: "Read"
     }
   },
   ar: {
@@ -176,6 +192,22 @@ const translations = {
       language: 'اللغة',
       english: 'الإنجليزية',
       arabic: 'العربية'
+    },
+    notifications: {
+      pageTitle: "الإشعارات",
+      pageSubtitle: "ابق على اطلاع بالتنبيهات والتذكيرات الهامة.",
+      filterLabel: "تصفية حسب:",
+      all: "الكل",
+      payments: "المدفوعات",
+      maintenance: "الصيانة",
+      contracts: "العقود",
+      general: "عام",
+      verification: "التحقق",
+      markAllRead: "تحديد الكل كمقروء",
+      noNotifications: "لا توجد إشعارات.",
+      from: "من:",
+      markAsRead: "تحديد كمقروء",
+      read: "مقروء"
     }
   }
 };

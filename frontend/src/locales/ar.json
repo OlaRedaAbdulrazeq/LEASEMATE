@@ -75,5 +75,21 @@
     "idImage": "صورة الهوية",
     "selfieImage": "الصورة الشخصية",
     "logout": "تسجيل الخروج"
-  }
+  },
+  "notifications": {
+  "pageTitle": "الإشعارات",
+  "pageSubtitle": "ابق على اطلاع بالتنبيهات والتذكيرات الهامة.",
+  "filterLabel": "تصفية حسب:",
+  "all": "الكل",
+  "payments": "المدفوعات",
+  "maintenance": "الصيانة",
+  "contracts": "العقود",
+  "general": "عام",
+  "verification": "التحقق",
+  "markAllRead": "تحديد الكل كمقروء",
+  "noNotifications": "لا توجد إشعارات.",
+  "from": "من:",
+  "markAsRead": "تحديد كمقروء",
+  "read": "مقروء"
+}
 } 
