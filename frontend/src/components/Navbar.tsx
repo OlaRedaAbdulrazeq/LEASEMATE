@@ -148,21 +148,21 @@ export default function Navbar() {
                   <hr className="my-2 border-gray-200" />
                   <Link
                     href="/dashboard"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                    className="block px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors font-bold"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     لوحة التحكم
                   </Link>
                   <Link
                     href="/profile"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors font-bold "
+                    className="block px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors font-bold"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     الملف الشخصي
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors font-bold "
+                    className="block px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors font-bold"
                   >
                     تسجيل الخروج
                   </button>
@@ -251,21 +251,21 @@ export default function Navbar() {
                       <hr className="border-gray-200" />
                       <Link
                         href="/dashboard"
-                        className="block text-gray-700 hover:text-orange-600 transition-colors  font-bold text-xl"
+                        className="block text-gray-700 hover:text-orange-600 transition-colors  font-bold"
                         onClick={() => setIsMenuOpen(false)}
                       >
                         لوحة التحكم
                       </Link>
                       <Link
                         href="/profile"
-                        className="block text-gray-700 hover:text-orange-600 transition-colors font-bold text-xl"
+                        className="block text-gray-700 hover:text-orange-600 transition-colors font-bold "
                         onClick={() => setIsMenuOpen(false)}
                       >
                         الملف الشخصي
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="block text-gray-700 hover:text-orange-600 transition-colors font-bold text-xl"
+                        className="block text-gray-700 hover:text-orange-600 transition-colors font-bold "
                       >
                         تسجيل الخروج
                       </button>
