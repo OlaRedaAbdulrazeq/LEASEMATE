@@ -7,14 +7,14 @@ exports.createNotification = async (data) => {
 };
 
 // Get paginated notifications for a specific user
-exports.getUserNotifications = async (userId, page = 1, limit = 10) => {
+exports.getUserNotifications = async (userId , limit , page = 1 ) => {  // limit was = 10
   const total = await Notification.countDocuments({ userId });
 
   const notifications = await Notification.find({ userId })
     .populate('senderId', 'name avatarUrl') // optional: adds sender's name/avatar
     .sort({ createdAt: -1 })
-    .skip((page - 1) * limit)
-    .limit(limit);
+    // .skip((page - 1) * limit)
+    // .limit(limit);
 
   return {
     data: notifications,
