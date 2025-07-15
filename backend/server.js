@@ -11,6 +11,10 @@ const httpStatusText = require('./utils/httpStatusText');
 const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io');
+const { setupSocket } = require('./socket');
+const { startLeaseExpiryJob } = require('./utils/leaseExpiryJob');
+const reviewRoutes = require("./routes/review.route");
+
 const app = express();
 const server = http.createServer(app);
 
@@ -21,25 +25,14 @@ const io = socketIo(server, {
   },
 });
 
-// Attach `io` to the app so routes/controllers can emit events
-app.set('io', io);
+// setup socket listeners
+setupSocket(io);
 
-io.on('connection', (socket) => {
-  console.log('✅ WebSocket connected:', socket.id);
-
-  socket.on('join', (userId) => {
-    console.log(`📌 User ${userId} joined room`);
-    socket.join(userId);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('❌ WebSocket disconnected:', socket.id);
-  });
-});
+// start cron jobs and pass `io`
+startLeaseExpiryJob(io);
 
 connectDB();
 
-// CORS configuration
 app.use(cors({
   origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
@@ -48,8 +41,6 @@ app.use(cors({
 }));
 
 app.use(express.json());
-
-// Serve uploads folder
 app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 
 // Routes
@@ -58,8 +49,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/units', unitRouter);
 app.use('/api/dev', testLeaseRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use("/api/reviews", reviewRoutes);
 
-//global error handler
 app.use((error, req, res, next) => {
   res.status(error.statusCode || 500).json({
     status: error.StatusText || 'ERROR',
@@ -69,7 +60,6 @@ app.use((error, req, res, next) => {
   });
 });
 
-// 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
