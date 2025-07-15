@@ -69,7 +69,10 @@ exports.createNotification = async (req, res) => {
     });
 
     const io = req.app.get('io');
-    io.to(userId).emit('newNotification', notification);
+
+    if (io) {
+      io.to(userId).emit('newNotification', notification);
+    }
 
     res.status(201).json({
       status: "success",
