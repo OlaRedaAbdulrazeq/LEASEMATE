@@ -4,11 +4,15 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 
 export interface Notification {
+  index?:number;
   _id: string;
   title: string;
   message: string;
   type: string;
   link?: string;
+  leaseId?: string;
+  landlordId?:string;
+  tenantId?:string;
   isRead: boolean;
   createdAt: string;
   senderId?: {
@@ -21,7 +25,6 @@ interface NotificationsContextType {
   notifications: Notification[];
   markAllAsRead: () => void;
   markSingleAsRead: (id: string) => void;
-  addNotification: (notification: Notification) => void;
   loading: boolean;
 }
 
@@ -42,7 +45,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchNotifications = () => {
     if (!user?._id || !token) return;
 
     setLoading(true);
@@ -61,14 +64,31 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchNotifications();
   }, [user?._id, token]);
 
+  // Poll every 30 seconds
+  useEffect(() => {
+    if (!user?._id || !token) return;
+
+    const interval = setInterval(() => {
+      fetchNotifications();
+    }, 30_000);
+
+    return () => clearInterval(interval);
+  }, [user?._id, token]);
+
+  // Listen for socket events
   useEffect(() => {
     if (!socket) return;
 
     const handleNewNotification = (notification: Notification) => {
       console.log("🔔 New notification received:", notification);
-      addNotification(notification);
+      setNotifications((prev) => [notification, ...prev]);
     };
 
     socket.on("newNotification", handleNewNotification);
@@ -77,10 +97,6 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       socket.off("newNotification", handleNewNotification);
     };
   }, [socket]);
-
-  const addNotification = (notification: Notification) => {
-    setNotifications((prev) => [notification, ...prev]);
-  };
 
   const markAllAsRead = () => {
     if (!user?._id || !token) return;
@@ -132,7 +148,6 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         notifications,
         markAllAsRead,
         markSingleAsRead,
-        addNotification,
         loading,
       }}
     >
