@@ -106,9 +106,9 @@ export default function NotificationsPage() {
                 <option value="LEASE_EXPIRED">
                   {t("notifications.contracts")}
                 </option>
-                <option value="GENERAL">
+                {/* <option value="GENERAL">
                   {t("notifications.general")}
-                </option>
+                </option> */}
               </select>
             </div>
 
