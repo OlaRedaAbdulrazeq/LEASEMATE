@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useLanguage } from "@/contexts/LanguageContext";
+// import { useLanguage } from "@/contexts/LanguageContext";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { CheckCheck, Check } from "lucide-react";
@@ -9,7 +9,7 @@ import { useNotifications } from "@/contexts/NotificationsContext";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function NotificationsPage() {
-  const { t, language } = useLanguage();
+  // const { t, language } = useLanguage();
   const router = useRouter();
   const { notifications, markAllAsRead, markSingleAsRead } = useNotifications();
   const [filter, setFilter] = useState("ALL");
@@ -54,7 +54,7 @@ export default function NotificationsPage() {
           const data = await res.json();
 
           if (data.exists) {
-            alert("You have posted a review before.");
+            alert("لقد قمت بوضع تقييمك من قبل ");
             return;
           } else {
             targetLink = `/leave-review?leaseId=${notification.leaseId}&revieweeId=${revieweeId}`;
@@ -81,10 +81,10 @@ export default function NotificationsPage() {
           {/* Page header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              {t("notifications.pageTitle")}
+              {"الإشعارات"}
             </h1>
             <p className="text-gray-600 dark:text-gray-300">
-              {t("notifications.pageSubtitle")}
+              {"ابق على اطلاع بالتنبيهات والتذكيرات الهامة."}
             </p>
           </div>
 
@@ -92,19 +92,19 @@ export default function NotificationsPage() {
           <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {t("notifications.filterLabel")}
+                {"تصفية حسب:"}
               </span>
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
                 className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-2 pl-3 pr-8 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
               >
-                <option value="ALL">{t("notifications.all")}</option>
-                <option value="MAINTENANCE_UPDATE">
-                  {t("notifications.maintenance")}
-                </option>
+                <option value="ALL">{"الكل"}</option>
+                {/* <option value="MAINTENANCE_UPDATE">
+                  {"الصيانة"}
+                </option> */}
                 <option value="LEASE_EXPIRED">
-                  {t("notifications.contracts")}
+                  {"العقود"}
                 </option>
                 {/* <option value="GENERAL">
                   {t("notifications.general")}
@@ -116,7 +116,7 @@ export default function NotificationsPage() {
               onClick={markAllAsRead}
               className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition"
             >
-              {t("notifications.markAllRead")}
+              {"تحديد الكل كمقروء"}
             </button>
           </div>
 
@@ -124,7 +124,7 @@ export default function NotificationsPage() {
           <div className="space-y-4">
             {filteredNotifications.length === 0 ? (
               <p className="text-gray-700 dark:text-gray-300">
-                {t("notifications.noNotifications")}
+                {"لا توجد إشعارات."}
               </p>
             ) : (
               filteredNotifications.map((notification, index) => (
@@ -155,23 +155,19 @@ export default function NotificationsPage() {
 
                   {/* Date */}
                   <span
-                    className={`absolute top-3 ${
-                      language === "ar" ? "left-4" : "right-4"
-                    } text-xs text-gray-500 dark:text-gray-400`}
+                    className="absolute top-3 left-4 text-xs text-gray-500 dark:text-gray-400"
                   >
                     {new Date(notification.createdAt).toLocaleString()}
                   </span>
 
                   {/* Check icon */}
                   <div
-                    className={`absolute bottom-3 ${
-                      language === "ar" ? "left-4" : "right-4"
-                    }`}
+                    className="absolute bottom-3 left-4"
                   >
                     {notification.isRead ? (
                       <span
                         className="text-green-500 dark:text-green-400"
-                        title={t("notifications.read")}
+                        title={"تحديد كمقروء"}
                       >
                         <Check size={20} />
                       </span>
