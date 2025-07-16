@@ -6,7 +6,6 @@ export type FilterValues = {
   type: string;
   furnishing: string;
   amenities: string[];
-  occupancy: string;
   verified: boolean;
 };
 
@@ -16,11 +15,13 @@ interface FilterSidebarProps {
 }
 
 const amenityOptions = [
-  { value: "gym", label: "نادي رياضي" },
-  { value: "pool", label: "مسبح" },
-  { value: "parking", label: "موقف سيارات" },
-  { value: "pet", label: "مسموح بالحيوانات" },
-  { value: "laundry", label: "غسيل داخل الوحدة" },
+  { value: "hasAC", label: "تكييف" },
+  { value: "hasWifi", label: "إنترنت" },
+  { value: "hasTV", label: "تلفزيون" },
+  { value: "hasKitchenware", label: "أدوات مطبخ" },
+  { value: "hasHeating", label: "تدفئة" },
+  { value: "hasPool", label: "مسبح" },
+  { value: "isFurnished", label: "مفروش" },
 ];
 
 const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
@@ -35,7 +36,6 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
       setLocal((prev) => ({ ...prev, verified: checked }));
     } else if (type === "checkbox" && name.startsWith("amenity-")) {
       const amenity = value;
-      const checked = (e.target as HTMLInputElement).checked;
       setLocal((prev) => {
         const exists = prev.amenities.includes(amenity);
         return {
@@ -74,7 +74,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
                 className="h-full bg-[var(--terracotta)] rounded-lg transition-all duration-200"
                 style={{
                   width: `${
-                    ((Number(local.price) - 500) / (5000 - 500)) * 100
+                    (((Number(local.price) || 800) - 800) / (6000 - 800)) * 100
                   }%`,
                 }}
               ></div>
@@ -83,20 +83,20 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
               className="absolute top-0 w-full h-3 bg-transparent appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--terracotta)] focus:ring-opacity-50 rounded-lg"
               id="price-range"
               name="price"
-              max={5000}
-              min={500}
+              max={6000}
+              min={800}
               type="range"
-              value={local.price}
+              value={local.price || 800}
               onChange={handleChange}
             />
           </div>
           <div className="flex justify-between text-sm text-[var(--light-brown)] mt-2">
-            <span>500</span>
-            <span>5000+</span>
+            <span>800</span>
+            <span>6000+ جنيه</span>
           </div>
           <div className="text-center mt-2">
             <span className="text-[var(--dark-brown)] font-medium bg-gray-100 px-2 py-1 rounded">
-              ${local.price || 500}
+              {local.price || 800} جنيه
             </span>
           </div>
         </div>
@@ -116,10 +116,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
           onChange={handleChange}
         >
           <option value="">أي</option>
-          <option value="studio">استوديو</option>
-          <option value="1br">غرفة نوم واحدة</option>
-          <option value="2br">غرفتان</option>
-          <option value="3br">٣+ غرف</option>
+          <option value="apartment">شقة</option>
+          <option value="villa">فيلا</option>
         </select>
       </div>
       <div>
@@ -137,8 +135,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
           onChange={handleChange}
         >
           <option value="">أي</option>
-          <option value="furnished">مفروشة</option>
-          <option value="unfurnished">غير مفروشة</option>
+          <option value="true">مفروش</option>
+          <option value="false">غير مفروش</option>
         </select>
       </div>
       <div>
@@ -162,23 +160,6 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
             </label>
           ))}
         </div>
-      </div>
-      <div>
-        <label
-          className="text-[var(--dark-brown)] text-base font-medium"
-          htmlFor="occupancy"
-        >
-          عدد السكان
-        </label>
-        <input
-          className="form-input mt-2 w-full rounded-lg text-[var(--dark-brown)] border border-[var(--light-gray)] bg-[var(--eggshell)] h-12 px-4 text-base font-normal"
-          id="occupancy"
-          name="occupancy"
-          placeholder="مثال: ٢"
-          type="number"
-          value={local.occupancy}
-          onChange={handleChange}
-        />
       </div>
       <div className="flex items-center justify-between pt-4">
         <label
