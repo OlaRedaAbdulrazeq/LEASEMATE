@@ -8,8 +8,52 @@ const deleteFromCloudinary = require("../utils/deleteFromCloudinary");
 const extractPublicId = require("../utils/extractPublicId");
 
 const getAllUnits = asyncWrapper(async (req, res) => {
-  const units = await Unit.find();
-  res.json({ status: httpStatusText.SUCCESS, data: { units } });
+  const { search, type, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
+
+  // Build filter object
+  let filter = {};
+
+  if (search) {
+    filter.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { description: { $regex: search, $options: "i" } },
+      { address: { $regex: search, $options: "i" } },
+      { city: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  if (type) {
+    filter.type = type;
+  }
+
+  if (minPrice || maxPrice) {
+    filter.pricePerMonth = {};
+    if (minPrice) filter.pricePerMonth.$gte = Number(minPrice);
+    if (maxPrice) filter.pricePerMonth.$lte = Number(maxPrice);
+  }
+
+  // Calculate pagination
+  const skip = (page - 1) * limit;
+
+  const units = await Unit.find(filter)
+    .limit(Number(limit))
+    .skip(skip)
+    .sort({ createdAt: -1 });
+
+  const total = await Unit.countDocuments(filter);
+
+  res.json({
+    status: httpStatusText.SUCCESS,
+    data: {
+      units,
+      pagination: {
+        currentPage: Number(page),
+        totalPages: Math.ceil(total / limit),
+        totalUnits: total,
+        limit: Number(limit),
+      },
+    },
+  });
 });
 
 const getUnit = asyncWrapper(async (req, res, next) => {
@@ -29,10 +73,16 @@ const addUnit = asyncWrapper(async (req, res, next) => {
   }
 
   if (!req.files || req.files.length === 0) {
-    return next(appError.create("At least one image is required", 400, httpStatusText.FAIL));
+    return next(
+      appError.create(
+        "At least one image is required",
+        400,
+        httpStatusText.FAIL
+      )
+    );
   }
 
-  const imageUploadPromises = req.files.map(file =>
+  const imageUploadPromises = req.files.map((file) =>
     uploadToCloudinary(file.buffer, "LeaseMate/units")
   );
 
@@ -63,12 +113,12 @@ const updateUnit = asyncWrapper(async (req, res, next) => {
 
   // If new images are uploaded, delete old ones first
   if (files && files.length > 0) {
-    const oldImagePublicIds = unit.images.map(url => extractPublicId(url));
-    
-    await Promise.all(oldImagePublicIds.map(id => deleteFromCloudinary(id)));
+    const oldImagePublicIds = unit.images.map((url) => extractPublicId(url));
+
+    await Promise.all(oldImagePublicIds.map((id) => deleteFromCloudinary(id)));
 
     const newImageUrls = await Promise.all(
-      files.map(file => uploadToCloudinary(file.buffer, "LeaseMate/units"))
+      files.map((file) => uploadToCloudinary(file.buffer, "LeaseMate/units"))
     );
     updates.images = newImageUrls;
   }
@@ -111,7 +161,9 @@ const deleteUnitImage = asyncWrapper(async (req, res, next) => {
   }
 
   if (!unit.images.includes(imageUrl)) {
-    return next(appError.create("Image not found in unit", 404, httpStatusText.FAIL));
+    return next(
+      appError.create("Image not found in unit", 404, httpStatusText.FAIL)
+    );
   }
 
   const publicId = extractPublicId(imageUrl);
@@ -127,5 +179,11 @@ const deleteUnitImage = asyncWrapper(async (req, res, next) => {
   });
 });
 
-
-module.exports = { getAllUnits, getUnit, addUnit, updateUnit, deleteUnit, deleteUnitImage };
+module.exports = {
+  getAllUnits,
+  getUnit,
+  addUnit,
+  updateUnit,
+  deleteUnit,
+  deleteUnitImage,
+};
