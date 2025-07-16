@@ -32,6 +32,46 @@ export interface AuthResponse {
   };
 }
 
+export interface Unit {
+  _id: string;
+  name: string; // Backend uses 'name' instead of 'title'
+  description: string;
+  pricePerMonth: number; // Backend uses 'pricePerMonth' instead of 'price'
+  address: string;
+  city: string;
+  governorate: string;
+  postalCode?: number;
+  numRooms: number; // Backend uses 'numRooms' instead of 'bedrooms'
+  space: number; // Backend uses 'space' instead of 'area'
+  type: 'villa' | 'apartment'; // Backend enum is different
+  images: string[];
+  ownerId: string; // Backend uses 'ownerId' instead of nested landlord object
+  isFurnished: boolean;
+  hasPool: boolean;
+  hasAC: boolean;
+  hasTV: boolean;
+  hasWifi: boolean;
+  hasKitchenware: boolean;
+  hasHeating: boolean;
+  status: 'available' | 'booked' | 'under maintenance'; // Backend uses 'status' instead of 'available'
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface UnitsResponse {
+  status: string;
+  data: {
+    units: Unit[];
+  };
+}
+
+export interface UnitResponse {
+  status: string;
+  data: {
+    unit: Unit;
+  };
+}
+
 class ApiService {
   private async request<T>(
     endpoint: string,
@@ -130,6 +170,45 @@ class ApiService {
       body: JSON.stringify({ action }),
     });
   }
+
+  async getUnits(token?: string, params?: { page?: number; limit?: number; search?: string; minPrice?: number; maxPrice?: number; type?: string; }): Promise<Unit[]> {
+    const searchParams = new URLSearchParams();
+    
+    if (params) {
+      if (params.page) searchParams.append('page', params.page.toString());
+      if (params.limit) searchParams.append('limit', params.limit.toString());
+      if (params.search) searchParams.append('search', params.search);
+      if (params.minPrice) searchParams.append('minPrice', params.minPrice.toString());
+      if (params.maxPrice) searchParams.append('maxPrice', params.maxPrice.toString());
+      if (params.type) searchParams.append('type', params.type);
+    }
+
+    const endpoint = `/units${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await this.request<UnitsResponse>(endpoint, {
+      headers,
+    });
+    
+    return response.data.units;
+  }
+
+  async getUnitById(unitId: string, token?: string): Promise<Unit> {
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await this.request<UnitResponse>(`/units/${unitId}`, {
+      headers,
+    });
+    
+    return response.data.unit;
+  }
 }
 
-export const apiService = new ApiService(); 
+export const apiService = new ApiService();
