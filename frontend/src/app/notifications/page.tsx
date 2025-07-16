@@ -54,7 +54,6 @@ export default function NotificationsPage() {
           const data = await res.json();
 
           if (data.exists) {
-            alert("لقد قمت بوضع تقييمك من قبل ");
             return;
           } else {
             targetLink = `/leave-review?leaseId=${notification.leaseId}&revieweeId=${revieweeId}`;
