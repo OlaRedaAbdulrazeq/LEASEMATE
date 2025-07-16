@@ -13,7 +13,7 @@ interface MaintenanceRequest {
   status: "pending" | "in progress" | "resolved";
   notes?: string;
   createdAt: string;
-  _landlordNote?: string; // Added for landlord's note
+  _landlordNote?: string;
 }
 
 export default function MaintenanceRequestsPage() {
@@ -26,13 +26,11 @@ export default function MaintenanceRequestsPage() {
   const [localDates, setLocalDates] = useState<{ [id: string]: string }>({});
   const [openImage, setOpenImage] = useState<string | null>(null);
 
-  // جلب الطلبات عند التحميل
   useEffect(() => {
     fetchRequests();
   }, []);
 
   useEffect(() => {
-    // بعد جلب الطلبات، احسبي التواريخ المحلية
     const dates: { [id: string]: string } = {};
     requests.forEach((req) => {
       dates[req._id] = new Date(req.createdAt).toLocaleString();
@@ -43,7 +41,7 @@ export default function MaintenanceRequestsPage() {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      console.log("Current token:", token); // للتشخيص
+      console.log("Current token:", token);
       if (!token) {
         setError("يجب تسجيل الدخول أولاً");
         return;
@@ -56,7 +54,7 @@ export default function MaintenanceRequestsPage() {
       });
       setRequests(res.data);
     } catch (err) {
-      console.error("Error fetching requests:", err); // للتشخيص
+      console.error("Error fetching requests:", err);
       setError("حدث خطأ أثناء جلب الطلبات");
     } finally {
       setLoading(false);
@@ -91,7 +89,6 @@ export default function MaintenanceRequestsPage() {
       formData.append("title", form.title);
       formData.append("description", form.description);
       if (form.image) formData.append("image", form.image);
-      // يمكن إضافة unitId وcontractId هنا إذا كانت متوفرة
       await axios.post("http://localhost:5000/api/maintenance", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -103,7 +100,7 @@ export default function MaintenanceRequestsPage() {
       setForm({ title: "", description: "", image: null });
       fetchRequests();
     } catch (err) {
-      console.error("Error submitting request:", err); // للتشخيص
+      console.error("Error submitting request:", err);
       setError("حدث خطأ أثناء إرسال الطلب");
     } finally {
       setLoading(false);
@@ -202,16 +199,12 @@ export default function MaintenanceRequestsPage() {
                     </div>
                   </div>
                 )}
-                {/* <div className="text-xs text-gray-400 mt-1">
-                  تاريخ الإرسال: {localDates[req._id] || ""}
-                </div> */}
               </li>
             ))}
           </ul>
         )}
       </main>
 
-      {/* Modal لعرض الصورة */}
       {openImage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
           <div className="relative">
