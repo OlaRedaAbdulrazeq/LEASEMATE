@@ -39,7 +39,7 @@ export default function LeaveReviewPage() {
 
           if (data.exists) {
             setAlreadyReviewed(true);
-            setErrorMessage("You have posted a review before.");
+            setErrorMessage("لقد قمت بنشر مراجعة من قبل.");
           }
         } catch (error) {
           console.error("Error checking review existence:", error);
@@ -54,7 +54,7 @@ export default function LeaveReviewPage() {
     e.preventDefault();
 
     if (!leaseId || !revieweeId || !token) {
-      setErrorMessage("Missing required information.");
+      setErrorMessage("معلومات غير مكتملة.");
       return;
     }
 
@@ -80,16 +80,16 @@ export default function LeaveReviewPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Failed to submit review.");
+        throw new Error(data.message || "فشل إرسال المراجعة.");
       }
 
-      setSuccessMessage("Review submitted successfully!");
+      setSuccessMessage("تم إرسال المراجعة بنجاح!");
       setTimeout(() => {
         router.push("/dashboard");
       }, 500);
     } catch (error: any) {
       console.error(error);
-      setErrorMessage(error.message || "Error submitting review.");
+      setErrorMessage(error.message || "حدث خطأ أثناء إرسال المراجعة.");
     } finally {
       setLoading(false);
     }
@@ -101,7 +101,7 @@ export default function LeaveReviewPage() {
       <main className="pt-24 px-4">
         <div className="max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white text-center">
-            Leave a Review
+            اترك مراجعة
           </h1>
 
           {successMessage && (
@@ -118,13 +118,13 @@ export default function LeaveReviewPage() {
 
           {alreadyReviewed ? (
             <div className="text-center py-8 px-4 bg-yellow-100 border border-yellow-300 rounded text-yellow-800 font-medium">
-              You have already reviewed this user for this lease.
+              لقد قمت بالفعل بمراجعة هذا المستخدم لهذا العقد.
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="flex flex-col items-center">
                 <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
-                  Rating
+                  التقييم
                 </label>
                 <div className="flex gap-2 justify-center">
                   {[1, 2, 3, 4, 5].map((star) => {
@@ -155,7 +155,7 @@ export default function LeaveReviewPage() {
 
               <div>
                 <label className="block text-gray-700 dark:text-gray-300 font-medium mb-1">
-                  Comment (optional)
+                  تعليق (اختياري)
                 </label>
                 <textarea
                   rows={4}
@@ -170,7 +170,7 @@ export default function LeaveReviewPage() {
                 disabled={loading}
                 className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold px-4 py-2 rounded transition"
               >
-                {loading ? "Submitting..." : "Submit Review"}
+                {loading ? "جاري الإرسال..." : "إرسال المراجعة"}
               </button>
             </form>
           )}
