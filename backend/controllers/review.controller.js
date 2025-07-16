@@ -1,6 +1,7 @@
 const Review = require("../models/review.model");
 const Lease = require("../models/lease.model");
 const User = require("../models/user.model");
+const { analyzeReviewWithOpenAI } = require("../utils/openai");
 
 // POST /api/reviews
 exports.createReview = async (req, res) => {
@@ -59,6 +60,19 @@ exports.createReview = async (req, res) => {
         message: "You have already submitted a review for this lease.",
       });
     }
+    let sentiment = null;
+    let keywords = [];
+    let abusive = false;
+
+    if (comment) {
+      // Call OpenAI
+      const analysis = await analyzeReviewWithOpenAI(comment);
+
+      sentiment = analysis.sentiment;
+      keywords = analysis.keywords;
+      abusive = analysis.abusive;
+    }
+
 
     // Create the review
     const review = await Review.create({
@@ -67,6 +81,9 @@ exports.createReview = async (req, res) => {
       revieweeId,
       rating,
       comment,
+      sentiment,
+      keywords,
+      abusive,
     });
 
     res.status(201).json({
