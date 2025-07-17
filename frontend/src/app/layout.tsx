@@ -16,25 +16,34 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "LeaseMate - Smart Rentals, Simplified",
-  description: "Simplify and digitize the rental process for landlords and tenants in Egypt",
+  description:
+    "Simplify and digitize the rental process for landlords and tenants in Egypt",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="ar" dir="rtl">
       <head>
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link 
-          as="style" 
-          href="https://fonts.googleapis.com/css2?display=swap&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800" 
-          rel="stylesheet" 
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin=""
+        />
+        <link
+          as="style"
+          href="https://fonts.googleapis.com/css2?display=swap&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cairo:wght@400;500;600;700;800"
+          rel="stylesheet"
         />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         <ThemeProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>
       </body>
     </html>
