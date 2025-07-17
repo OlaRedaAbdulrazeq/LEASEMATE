@@ -116,17 +116,15 @@ export default function UnitDetailPage() {
 
   // Transform amenities to match the component's expected format
   const transformedAmenities = [
-    { icon: "Bed", label: `${unit.numRooms} غرف` },
-    { icon: "SquareFoot", label: `${unit.space} متر مربع` },
-    ...(unit.hasAC ? [{ icon: "AcUnit", label: "تكييف" }] : []),
-    ...(unit.hasWifi ? [{ icon: "Wifi", label: "إنترنت" }] : []),
-    ...(unit.hasTV ? [{ icon: "Tv", label: "تلفزيون" }] : []),
-    ...(unit.hasKitchenware ? [{ icon: "Kitchen", label: "أدوات مطبخ" }] : []),
-    ...(unit.hasHeating
-      ? [{ icon: "LocalFireDepartment", label: "تدفئة" }]
-      : []),
-    ...(unit.hasPool ? [{ icon: "Pool", label: "مسبح" }] : []),
-    ...(unit.isFurnished ? [{ icon: "Chair", label: "مفروش" }] : []),
+    { icon: "Check", label: `${unit.numRooms} غرف` },
+    { icon: "Check", label: `${unit.space} متر مربع` },
+    ...(unit.hasAC ? [{ icon: "Check", label: "تكييف" }] : []),
+    ...(unit.hasWifi ? [{ icon: "Check", label: "إنترنت" }] : []),
+    ...(unit.hasTV ? [{ icon: "Check", label: "تلفزيون" }] : []),
+    ...(unit.hasKitchenware ? [{ icon: "Check", label: "أدوات مطبخ" }] : []),
+    ...(unit.hasHeating ? [{ icon: "Check", label: "تدفئة" }] : []),
+    ...(unit.hasPool ? [{ icon: "Check", label: "مسبح" }] : []),
+    ...(unit.isFurnished ? [{ icon: "Check", label: "مفروش" }] : []),
   ];
 
   // Create a location string
