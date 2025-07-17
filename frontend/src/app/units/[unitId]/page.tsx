@@ -187,3 +187,4 @@ export default function UnitDetailPage() {
     </div>
   );
 }
+//TODO: (optional, later) improve layout
