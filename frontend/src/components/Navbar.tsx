@@ -29,7 +29,7 @@ export default function Navbar() {
         <div className="flex items-center gap-3 text-gray-900 pl-2">
           {" "}
           {/* Added pl-2 for spacing */}
-          <Logo size={40} />
+          <Logo size={70} />
         </div>
 
         <nav
