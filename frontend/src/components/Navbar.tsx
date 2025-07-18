@@ -277,16 +277,7 @@ export default function Navbar() {
           </div>
         )}
       </header>
-      {/* Verification Banner */}
-      {/* Removed: No banner for pending or rejected status, only show the large message on the main page */}
-      {/*
-      {user && user.verificationStatus && user.verificationStatus.status !== 'approved' && (
-        <div className="mt-[72px] w-full bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-center py-3 px-4 shadow-sm z-40">
-          {user.verificationStatus.status === 'pending' && 'Your account is under verification. Some features may be limited until approval.'}
-          {user.verificationStatus.status === 'rejected' && 'Your verification was rejected. Please re-upload your documents.'}
-        </div>
-      )}
-      */}
+      
     </>
   );
 }
