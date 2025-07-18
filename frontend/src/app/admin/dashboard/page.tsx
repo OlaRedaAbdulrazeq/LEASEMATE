@@ -94,8 +94,10 @@ export default function AdminDashboard() {
   // Calculate pagination
   const indexOfLastUser = currentPage * usersPerPage;
   const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
-  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+  // استبعاد الأدمن من الظهور في الجدول
+  const filteredNonAdminUsers = filteredUsers.filter(user => user.role !== 'admin');
+  const currentUsers = filteredNonAdminUsers.slice(indexOfFirstUser, indexOfLastUser);
+  const totalPages = Math.ceil(filteredNonAdminUsers.length / usersPerPage);
 
   // Stats for dashboard
   const pendingCount = users.filter(u => u.verificationStatus?.status === 'pending').length;
