@@ -132,6 +132,9 @@ export default function UnitDetailPage() {
     .filter(Boolean)
     .join(", ");
 
+  // Get owner information
+  const ownerInfo = typeof unit.ownerId === "object" ? unit.ownerId : null;
+
   return (
     <div
       dir="rtl"
@@ -166,15 +169,15 @@ export default function UnitDetailPage() {
                   <div className="sticky top-24">
                     <RentSidebarCard
                       rent={unit.pricePerMonth}
-                      leaseDuration="١٢ شهر" 
+                      leaseDuration="١٢ شهر"
                       securityDeposit={unit.pricePerMonth}
                       availableFrom={
                         unit.status === "available" ? "متاح الآن" : "غير متاح"
                       }
                       manager={{
-                        name: "المالك",
-                        phone: "",
-                        email: "",
+                        name: ownerInfo?.name || "المالك",
+                        phone: ownerInfo?.phone || "",
+                        email: ownerInfo?.email || "",
                       }}
                     />
                   </div>
@@ -187,5 +190,3 @@ export default function UnitDetailPage() {
     </div>
   );
 }
-//TODO: display owner contact details
-//TODO: (optional, later) improve layout
