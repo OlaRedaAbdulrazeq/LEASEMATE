@@ -78,6 +78,7 @@ export interface UnitsResponse {
       currentPage: number;
       totalPages: number;
       totalUnits: number;
+      totalAvailableUnits: number;
       limit: number;
     };
   };

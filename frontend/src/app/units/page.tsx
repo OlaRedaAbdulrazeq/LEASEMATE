@@ -17,7 +17,7 @@ export default function UnitsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalUnits, setTotalUnits] = useState(0);
+  const [totalAvailableUnits, setTotalAvailableUnits] = useState(0);
 
   // Location state
   const [userLocation, setUserLocation] = useState<{
@@ -154,19 +154,13 @@ export default function UnitsPage() {
 
         const response = await apiService.getUnits(undefined, apiParams);
 
-        // Debug: Check what we're getting from the API
-        console.log("API Response:", response.data);
-        if (response.data.units.length > 0) {
-          console.log("First unit owner data:", response.data.units[0].ownerId);
-        }
-
         // Extract units and pagination from response
         const unitsArray = response.data.units || [];
         const pagination = response.data.pagination;
 
         setUnits(unitsArray);
         setTotalPages(pagination?.totalPages || 1);
-        setTotalUnits(pagination?.totalUnits || unitsArray.length);
+        setTotalAvailableUnits(pagination?.totalAvailableUnits || 0);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to fetch units");
       } finally {
@@ -291,12 +285,15 @@ export default function UnitsPage() {
             <div className="mb-6">
               <SearchBar value={search} onChange={handleSearchChange} />
             </div>
-            <h2 className="text-[var(--dark-brown)] text-3xl font-bold leading-tight tracking-tight mb-6 text-right">
+            <h2
+              className="text-[var(--dark-brown)] text-3xl font-bold leading-tight tracking-tight mb-6 text-right"
+              data-units-header
+            >
               {loading
                 ? "جاري التحميل..."
                 : search
-                ? `نتائج البحث: ${totalUnits} وحدات`
-                : `عرض ${totalUnits} وحدات`}
+                ? `نتائج البحث: ${totalAvailableUnits} وحدات متاحة`
+                : `عرض ${totalAvailableUnits} وحدات متاحة`}
             </h2>
 
             {/* Loading State */}
@@ -341,39 +338,32 @@ export default function UnitsPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                    {units.map((unit) => {
-                      // Check if owner is verified (status 'approved' means all verification steps are complete)
-                      const isOwnerVerified =
-                        typeof unit.ownerId === "object" &&
-                        unit.ownerId?.verificationStatus?.status === "approved";
+                    {units
+                      .filter((unit) => unit.status === "available") // Only show available units
+                      .map((unit) => {
+                        // Check if owner is verified (status 'approved' means all verification steps are complete)
+                        const isOwnerVerified =
+                          typeof unit.ownerId === "object" &&
+                          unit.ownerId?.verificationStatus?.status ===
+                            "approved";
 
-                      // Debug logging
-                      console.log(
-                        "Unit:",
-                        unit.name,
-                        "Owner:",
-                        unit.ownerId,
-                        "Verified:",
-                        isOwnerVerified
-                      );
-
-                      return (
-                        <UnitCard
-                          key={unit._id}
-                          id={unit._id}
-                          title={unit.name || "اسم غير متوفر"}
-                          price={unit.pricePerMonth || 0}
-                          size={unit.space || 0}
-                          imageUrl={
-                            unit.images && unit.images.length > 0
-                              ? unit.images[0]
-                              : "/placeholder-image.jpg"
-                          }
-                          available={unit.status === "available"}
-                          isVerified={isOwnerVerified}
-                        />
-                      );
-                    })}
+                        return (
+                          <UnitCard
+                            key={unit._id}
+                            id={unit._id}
+                            title={unit.name || "اسم غير متوفر"}
+                            price={unit.pricePerMonth || 0}
+                            size={unit.space || 0}
+                            imageUrl={
+                              unit.images && unit.images.length > 0
+                                ? unit.images[0]
+                                : "/placeholder-image.jpg"
+                            }
+                            available={true} // All displayed units are available
+                            isVerified={isOwnerVerified}
+                          />
+                        );
+                      })}
                   </div>
                 )}
 
@@ -393,3 +383,4 @@ export default function UnitsPage() {
     </div>
   );
 }
+//TODO: improve language with numbers 

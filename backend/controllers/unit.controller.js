@@ -22,7 +22,9 @@ const getAllUnits = asyncWrapper(async (req, res) => {
   } = req.query;
 
   // Build filter object
-  let filter = {};
+  let filter = {
+    status: "available", // Only get available units
+  };
 
   if (search && search.trim()) {
     // Escape special regex characters to prevent regex errors
@@ -158,6 +160,11 @@ const getAllUnits = asyncWrapper(async (req, res) => {
     total = allUnits.length;
   }
 
+  // Calculate total available units for display
+  const totalAvailableUnits = allUnits.filter(
+    (unit) => unit.status === "available"
+  ).length;
+
   res.json({
     status: httpStatusText.SUCCESS,
     data: {
@@ -166,6 +173,7 @@ const getAllUnits = asyncWrapper(async (req, res) => {
         currentPage: Number(page),
         totalPages: Math.ceil(total / limit),
         totalUnits: total,
+        totalAvailableUnits: totalAvailableUnits,
         limit: Number(limit),
       },
     },

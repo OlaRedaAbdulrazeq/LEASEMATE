@@ -78,4 +78,3 @@ const UnitCard: React.FC<UnitCardProps> = ({
 );
 
 export default UnitCard;
-/*TODO:(make a commented version that doesnt show unavailable pages*/
