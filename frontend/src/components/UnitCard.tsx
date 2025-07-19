@@ -78,5 +78,4 @@ const UnitCard: React.FC<UnitCardProps> = ({
 );
 
 export default UnitCard;
-/*TODO:(make a commented version that doesnt show unavailable pages,
-TODO: check why its unavailable in the first place)*/
+/*TODO:(make a commented version that doesnt show unavailable pages*/

@@ -108,6 +108,7 @@ const unitSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ["available", "booked", "under maintenance"],
+    default: "available",
   },
 });
 
