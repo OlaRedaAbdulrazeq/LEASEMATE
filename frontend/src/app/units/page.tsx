@@ -225,8 +225,8 @@ export default function UnitsPage() {
             {!search && (
               <div className="mb-4 p-3 rounded-lg bg-white shadow-sm border">
                 {locationLoading && (
-                  <div className="flex items-center text-blue-600">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                  <div className="flex items-center text-amber-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600 mr-2"></div>
                     جاري تحديد موقعك...
                   </div>
                 )}

@@ -35,22 +35,22 @@ const UnitCard: React.FC<UnitCardProps> = ({
         height={256}
       />
       {isVerified && (
-        <div className="absolute top-3 right-3 bg-[var(--olive)] text-white text-xs font-medium px-3 py-1.5 rounded-full shadow-md">
+        <div className="absolute top-3 right-3 bg-green-400 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md">
           موثوق
         </div>
       )}
-      {!available && (
+      {/* {!available && (
         <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-medium px-3 py-1.5 rounded-full shadow-md">
           غير متاح
         </div>
-      )}
+      )} */}
     </div>
     <div className="p-6">
       <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 text-right">
         {title}
       </h3>
       <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 text-right">
-        {size} قدم²
+        {size} متر
       </p>
       <div className="flex justify-between items-center mb-4">
         <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
@@ -74,3 +74,7 @@ const UnitCard: React.FC<UnitCardProps> = ({
 );
 
 export default UnitCard;
+/*TODO:verified=false sjouldnt show verified badge
+TODO: make unavailable ellipse bigger so the word is on one line
+TODO:(make a commented version that doesnt show unavailable pages,
+TODO: check why its unavailable in the first place)*/
