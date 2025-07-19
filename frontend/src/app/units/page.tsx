@@ -138,6 +138,13 @@ export default function UnitsPage() {
           lng?: number;
           radius?: number;
           verified?: string;
+          hasAC?: boolean;
+          hasWifi?: boolean;
+          hasTV?: boolean;
+          hasKitchenware?: boolean;
+          hasHeating?: boolean;
+          hasPool?: boolean;
+          isFurnished?: boolean;
         } = {
           page: currentPage,
           limit: 9, // Show 9 units per page to match the 3x3 grid
@@ -155,6 +162,18 @@ export default function UnitsPage() {
 
         // Add verified filter
         if (filters.verified) apiParams.verified = "true";
+
+        // Add amenity filters (convert to boolean for API service)
+        if (filters.amenities.includes("hasAC")) apiParams.hasAC = true;
+        if (filters.amenities.includes("hasWifi")) apiParams.hasWifi = true;
+        if (filters.amenities.includes("hasTV")) apiParams.hasTV = true;
+        if (filters.amenities.includes("hasKitchenware"))
+          apiParams.hasKitchenware = true;
+        if (filters.amenities.includes("hasHeating"))
+          apiParams.hasHeating = true;
+        if (filters.amenities.includes("hasPool")) apiParams.hasPool = true;
+        if (filters.amenities.includes("isFurnished"))
+          apiParams.isFurnished = true;
 
         // Add location parameters if user location is available AND no search term
         if (userLocation && !search) {
@@ -186,6 +205,7 @@ export default function UnitsPage() {
     filters.price,
     filters.type,
     filters.verified,
+    filters.amenities,
     userLocation,
     isLocationInitialized,
   ]);

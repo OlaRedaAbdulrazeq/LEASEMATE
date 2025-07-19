@@ -19,6 +19,13 @@ const getAllUnits = asyncWrapper(async (req, res) => {
     lng,
     radius = 50,
     verified,
+    hasAC,
+    hasWifi,
+    hasTV,
+    hasKitchenware,
+    hasHeating,
+    hasPool,
+    isFurnished,
   } = req.query;
 
   // Build filter object
@@ -48,6 +55,15 @@ const getAllUnits = asyncWrapper(async (req, res) => {
     if (minPrice) filter.pricePerMonth.$gte = Number(minPrice);
     if (maxPrice) filter.pricePerMonth.$lte = Number(maxPrice);
   }
+
+  // Add amenity filters
+  if (hasAC === "true") filter.hasAC = true;
+  if (hasWifi === "true") filter.hasWifi = true;
+  if (hasTV === "true") filter.hasTV = true;
+  if (hasKitchenware === "true") filter.hasKitchenware = true;
+  if (hasHeating === "true") filter.hasHeating = true;
+  if (hasPool === "true") filter.hasPool = true;
+  if (isFurnished === "true") filter.isFurnished = true;
 
   // Calculate pagination
   const skip = (page - 1) * limit;
