@@ -45,7 +45,19 @@ export interface Unit {
   space: number;
   type: "villa" | "apartment";
   images: string[];
-  ownerId: string;
+  ownerId:
+    | string
+    | {
+        _id: string;
+        name: string;
+        email?: string;
+        phone?: string;
+        verificationStatus?: {
+          status: "pending" | "approved" | "rejected";
+          idVerified?: boolean;
+          faceMatched?: boolean;
+        };
+      };
   isFurnished: boolean;
   hasPool: boolean;
   hasAC: boolean;
@@ -207,6 +219,7 @@ class ApiService {
       lat?: number;
       lng?: number;
       radius?: number;
+      verified?: string;
       isFurnished?: boolean;
       hasAC?: boolean;
       hasWifi?: boolean;
@@ -232,6 +245,7 @@ class ApiService {
       if (params.lng) searchParams.append("lng", params.lng.toString());
       if (params.radius)
         searchParams.append("radius", params.radius.toString());
+      if (params.verified) searchParams.append("verified", params.verified);
 
       // Amenity filters
       if (params.isFurnished) searchParams.append("isFurnished", "true");

@@ -126,6 +126,7 @@ export default function UnitsPage() {
           lat?: number;
           lng?: number;
           radius?: number;
+          verified?: string;
         } = {
           page: currentPage,
           limit: 9, // Show 9 units per page to match the 3x3 grid
@@ -141,6 +142,9 @@ export default function UnitsPage() {
 
         if (filters.type) apiParams.type = filters.type;
 
+        // Add verified filter
+        if (filters.verified) apiParams.verified = "true";
+
         // Add location parameters if user location is available AND no search term
         if (userLocation && !search) {
           apiParams.lat = userLocation.lat;
@@ -149,6 +153,12 @@ export default function UnitsPage() {
         }
 
         const response = await apiService.getUnits(undefined, apiParams);
+
+        // Debug: Check what we're getting from the API
+        console.log("API Response:", response.data);
+        if (response.data.units.length > 0) {
+          console.log("First unit owner data:", response.data.units[0].ownerId);
+        }
 
         // Extract units and pagination from response
         const unitsArray = response.data.units || [];
@@ -170,6 +180,7 @@ export default function UnitsPage() {
     search,
     filters.price,
     filters.type,
+    filters.verified,
     userLocation,
     isLocationInitialized,
   ]);
@@ -330,22 +341,39 @@ export default function UnitsPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                    {units.map((unit) => (
-                      <UnitCard
-                        key={unit._id}
-                        id={unit._id}
-                        title={unit.name || "اسم غير متوفر"}
-                        price={unit.pricePerMonth || 0}
-                        size={unit.space || 0}
-                        imageUrl={
-                          unit.images && unit.images.length > 0
-                            ? unit.images[0]
-                            : "/placeholder-image.jpg"
-                        }
-                        available={unit.status === "available"}
-                        isVerified={true}
-                      />
-                    ))}
+                    {units.map((unit) => {
+                      // Check if owner is verified (status 'approved' means all verification steps are complete)
+                      const isOwnerVerified =
+                        typeof unit.ownerId === "object" &&
+                        unit.ownerId?.verificationStatus?.status === "approved";
+
+                      // Debug logging
+                      console.log(
+                        "Unit:",
+                        unit.name,
+                        "Owner:",
+                        unit.ownerId,
+                        "Verified:",
+                        isOwnerVerified
+                      );
+
+                      return (
+                        <UnitCard
+                          key={unit._id}
+                          id={unit._id}
+                          title={unit.name || "اسم غير متوفر"}
+                          price={unit.pricePerMonth || 0}
+                          size={unit.space || 0}
+                          imageUrl={
+                            unit.images && unit.images.length > 0
+                              ? unit.images[0]
+                              : "/placeholder-image.jpg"
+                          }
+                          available={unit.status === "available"}
+                          isVerified={isOwnerVerified}
+                        />
+                      );
+                    })}
                   </div>
                 )}
 

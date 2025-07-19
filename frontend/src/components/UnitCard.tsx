@@ -74,7 +74,6 @@ const UnitCard: React.FC<UnitCardProps> = ({
 );
 
 export default UnitCard;
-/*TODO:verified=false sjouldnt show verified badge
-TODO: make unavailable ellipse bigger so the word is on one line
+/*TODO: make unavailable ellipse bigger so the word is on one line
 TODO:(make a commented version that doesnt show unavailable pages,
 TODO: check why its unavailable in the first place)*/
