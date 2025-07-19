@@ -19,7 +19,6 @@ const ImageSlider: React.FC<ImageSliderProps> = ({ images }) => {
         backgroundImage: `linear-gradient(0deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 25%), url('${images[current]}')`,
       }}
     >
-      {/* TODO: Use a gradient overlay with Tailwind if possible */}
       <div className="absolute inset-0 flex items-center justify-between px-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
         <button
           onClick={goToNext}

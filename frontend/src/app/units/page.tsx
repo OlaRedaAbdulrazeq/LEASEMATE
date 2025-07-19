@@ -19,6 +19,17 @@ export default function UnitsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalAvailableUnits, setTotalAvailableUnits] = useState(0);
 
+  // Function to format unit count in Arabic
+  const formatUnitCount = (count: number) => {
+    if (count === 0) {
+      return "لا توجد وحدات متاحة";
+    } else if (count > 1 && count <= 10) {
+      return `${count} وحدات متاحة`;
+    } else {
+      return `${count} وحدة متاحة`;
+    }
+  };
+
   // Location state
   const [userLocation, setUserLocation] = useState<{
     lat: number;
@@ -292,8 +303,10 @@ export default function UnitsPage() {
               {loading
                 ? "جاري التحميل..."
                 : search
-                ? `نتائج البحث: ${totalAvailableUnits} وحدات متاحة`
-                : `عرض ${totalAvailableUnits} وحدات متاحة`}
+                ? `نتائج البحث: ${formatUnitCount(totalAvailableUnits)}`
+                : totalAvailableUnits === 0
+                ? formatUnitCount(totalAvailableUnits)
+                : `عرض ${formatUnitCount(totalAvailableUnits)}`}
             </h2>
 
             {/* Loading State */}
@@ -383,4 +396,3 @@ export default function UnitsPage() {
     </div>
   );
 }
-//TODO: improve language with numbers 
