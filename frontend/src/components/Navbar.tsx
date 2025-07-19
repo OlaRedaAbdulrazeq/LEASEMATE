@@ -36,15 +36,10 @@ export default function Navbar() {
           key={pathname}
           className="hidden md:flex flex-1 justify-center items-center gap-6"
         >
-          {!user &&
-          (pathname === "/" ||
-            pathname === "/about" ||
-            pathname === "/auth/login" ||
-            pathname === "/auth/register" ||
-            pathname === "/auth/verification") ? (
+          {!user ? (
             <>
               <Link
-                href="/properties"
+                href="/unit"
                 className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-bold text-xl"
               >
                 تصفح العقارات
@@ -56,28 +51,64 @@ export default function Navbar() {
                 معلومات عنا
               </Link>
             </>
-          ) : (
+          ) : user.role === "landlord" ? (
             <>
               <Link
-                href="/properties"
+                href="/dashboard/booking-requests"
                 className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-bold text-xl"
               >
-                الشقق
+                طلبات الإيجار
               </Link>
               <Link
-                href="/leases"
+                href="/my-units"
                 className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-bold text-xl"
               >
-                العقود
+                ممتلكاتي
               </Link>
               <Link
-                href="/about"
+                href="/unit/add"
                 className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-bold text-xl"
               >
-                من نحن
+                إضافة وحدة جديدة
+              </Link>
+              <Link
+                href="/dashboard/leases"
+                className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-bold text-xl"
+              >
+                عقودي
               </Link>
             </>
-          )}
+          ) : user.role === "tenant" ? (
+            <>
+              <Link
+                href="/unit"
+                className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-bold text-xl"
+              >
+                تصفح العقارات
+              </Link>
+              <Link
+                href="/dashboard/leases"
+                className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-bold text-xl"
+              >
+                عقودي
+              </Link>
+            </>
+          ) : user.role === "admin" ? (
+            <>
+              <Link
+                href="/admin/dashboard"
+                className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-bold text-xl"
+              >
+                لوحة تحكم المشرف
+              </Link>
+              <Link
+                href="/dashboard/leases"
+                className="text-gray-700 hover:text-orange-600 transition-colors duration-300 font-bold text-xl"
+              >
+                عقودي
+              </Link>
+            </>
+          ) : null}
         </nav>
 
         <div className="flex items-center gap-4">
@@ -206,10 +237,10 @@ export default function Navbar() {
         {isMenuOpen && (
           <div className="absolute top-full left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 md:hidden">
             <div className="px-6 py-4 space-y-4">
-              {!user && (pathname === "/" || pathname === "/about") ? (
+              {!user ? (
                 <>
                   <Link
-                    href="/properties"
+                    href="/unit"
                     className="block text-gray-700 hover:text-orange-600 transition-colors font-medium"
                     onClick={() => setIsMenuOpen(false)}
                   >
@@ -223,54 +254,96 @@ export default function Navbar() {
                     معلومات عنا
                   </Link>
                 </>
-              ) : (
+              ) : user.role === "landlord" ? (
                 <>
                   <Link
-                    href="/properties"
+                    href="/dashboard/booking-requests"
                     className="block text-gray-700 hover:text-orange-600 transition-colors font-medium"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    الممتلكات
+                    طلبات الإيجار
                   </Link>
                   <Link
-                    href="/leases"
+                    href="/my-units"
                     className="block text-gray-700 hover:text-orange-600 transition-colors font-medium"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    الاتفاقيات
+                    ممتلكاتي
                   </Link>
                   <Link
-                    href="/about"
+                    href="/unit/add"
                     className="block text-gray-700 hover:text-orange-600 transition-colors font-medium"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    من نحن
+                    إضافة وحدة جديدة
                   </Link>
-                  {user && (
-                    <>
-                      <hr className="border-gray-200" />
-                      <Link
-                        href="/dashboard"
-                        className="block text-gray-700 hover:text-orange-600 transition-colors  font-bold"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        لوحة التحكم
-                      </Link>
-                      <Link
-                        href="/profile"
-                        className="block text-gray-700 hover:text-orange-600 transition-colors font-bold "
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        الملف الشخصي
-                      </Link>
-                      <button
-                        onClick={handleLogout}
-                        className="block text-gray-700 hover:text-orange-600 transition-colors font-bold "
-                      >
-                        تسجيل الخروج
-                      </button>
-                    </>
-                  )}
+                  <Link
+                    href="/dashboard/leases"
+                    className="block text-gray-700 hover:text-orange-600 transition-colors font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    عقودي
+                  </Link>
+                </>
+              ) : user.role === "tenant" ? (
+                <>
+                  <Link
+                    href="/unit"
+                    className="block text-gray-700 hover:text-orange-600 transition-colors font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    تصفح العقارات
+                  </Link>
+                  <Link
+                    href="/dashboard/leases"
+                    className="block text-gray-700 hover:text-orange-600 transition-colors font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    عقودي
+                  </Link>
+                </>
+              ) : user.role === "admin" ? (
+                <>
+                  <Link
+                    href="/admin/dashboard"
+                    className="block text-gray-700 hover:text-orange-600 transition-colors font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    لوحة تحكم المشرف
+                  </Link>
+                  <Link
+                    href="/dashboard/leases"
+                    className="block text-gray-700 hover:text-orange-600 transition-colors font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    عقودي
+                  </Link>
+                </>
+              ) : null}
+              
+              {user && (
+                <>
+                  <hr className="border-gray-200" />
+                  <Link
+                    href="/dashboard"
+                    className="block text-gray-700 hover:text-orange-600 transition-colors font-bold"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    لوحة التحكم
+                  </Link>
+                  <Link
+                    href="/profile"
+                    className="block text-gray-700 hover:text-orange-600 transition-colors font-bold"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    الملف الشخصي
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="block text-gray-700 hover:text-orange-600 transition-colors font-bold"
+                  >
+                    تسجيل الخروج
+                  </button>
                 </>
               )}
             </div>
@@ -281,3 +354,5 @@ export default function Navbar() {
     </>
   );
 }
+
+
