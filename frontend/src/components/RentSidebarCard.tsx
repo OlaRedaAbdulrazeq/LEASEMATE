@@ -29,6 +29,8 @@ const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [requested, setRequested] = useState(false);
+  // Add a state for success feedback
+  const [success, setSuccess] = useState(false);
 
   const handleInquireClick = async () => {
     if (!user) {
@@ -53,6 +55,7 @@ const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
       console.log("Booking request result:", result);
       toast.success("تم إرسال طلب الحجز بنجاح! سيتم التواصل معك قريباً.");
       setRequested(true);
+      setSuccess(true); // set success state
     } catch (err: any) {
       console.error("Booking request error:", err);
       toast.error(err.message || "حدث خطأ أثناء إرسال الطلب");
@@ -84,11 +87,12 @@ const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
       </div>
 
       <button
-        className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white text-lg font-bold py-4 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 active:translate-y-0 focus:outline-none focus:ring-4 focus:ring-orange-300 disabled:opacity-60 disabled:cursor-not-allowed"
+        className={`w-full text-lg font-bold py-4 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 active:translate-y-0 focus:outline-none focus:ring-4 focus:ring-orange-300 disabled:opacity-60 disabled:cursor-not-allowed 
+          ${success ? 'bg-green-500 hover:bg-green-600' : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white'}`}
         onClick={handleInquireClick}
         disabled={loading || requested}
       >
-        {loading ? "جاري الإرسال..." : requested ? "تم التقديم بالفعل" : (
+        {loading ? "جاري الإرسال..." : success ? "تم إرسال الطلب" : (
           <span className="flex items-center justify-center gap-2">
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path
