@@ -135,8 +135,8 @@ exports.getUserNotifications = async (req, res) => {
 
     const result = await notificationService.getUserNotifications(
       requestedUserId,
-      page,
-      limit
+      limit, // should be limit first
+      page  // then page
     );
     console.log("✅ Notifications fetched:", result.data?.length);
     res.status(200).json({
