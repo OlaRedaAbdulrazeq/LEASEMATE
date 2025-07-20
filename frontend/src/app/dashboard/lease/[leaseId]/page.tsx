@@ -69,14 +69,9 @@ export default function LeaseDetailsPage() {
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold"
               onClick={() => window.print()}
             >
-              طباعة مباشرة
+              طباعة العقد pdf
             </button>
-            <button
-              className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-semibold text-lg"
-              onClick={handleDownload}
-            >
-              تحميل PDF
-            </button>
+          
           </div>
         </div>
         
