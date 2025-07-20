@@ -15,8 +15,10 @@ function startLeaseExpiryJob(io) {
       });
 
       for (let lease of expiredLeases) {
-        const reviewLink = `/leave-review?leaseId=${lease._id}&tenantId=${lease.tenantId}&landlordId=${lease.landlordId}`;
-
+// For tenant notification (tenant reviews landlord)
+const tenantReviewLink = `/leave-review?leaseId=${lease._id}&revieweeId=${lease.landlordId}`;
+// For landlord notification (landlord reviews tenant)
+const landlordReviewLink = `/leave-review?leaseId=${lease._id}&revieweeId=${lease.tenantId}`;
         const tenantNotification = await Notification.create({
           userId: lease.tenantId,
           title: "لقد انتهي العقد",
@@ -27,7 +29,7 @@ function startLeaseExpiryJob(io) {
           tenantId: lease.tenantId,
           senderId: lease.landlordId,
           isRead: false,
-          link: reviewLink, // Optional: helps tenants navigate directly
+          link: tenantReviewLink,
         });
 
         const landlordNotification = await Notification.create({
@@ -39,8 +41,8 @@ function startLeaseExpiryJob(io) {
           landlordId: lease.landlordId,
           tenantId: lease.tenantId,
           senderId: lease.tenantId,
-          link: reviewLink,
           isRead: false,
+          link: landlordReviewLink,
         });
 
         io.to(lease.tenantId.toString()).emit("newNotification", tenantNotification);
