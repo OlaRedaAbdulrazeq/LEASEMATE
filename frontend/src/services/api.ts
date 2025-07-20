@@ -148,6 +148,53 @@ class ApiService {
       body: JSON.stringify({ action }),
     });
   }
+
+  // ===== Lease APIs =====
+  async getLeasesForLandlord(landlordId: string) {
+    return this.request(`/lease/landlord/${landlordId}`);
+  }
+
+  async getLeasesForTenant(tenantId: string) {
+    return this.request(`/lease/tenant/${tenantId}`);
+  }
+
+  async getLeaseById(leaseId: string) {
+    return this.request(`/lease/${leaseId}`);
+  }
+
+  async getUnitById(unitId: string) {
+    return this.request(`/units/${unitId}`);
+  }
+
+  async rejectLease(leaseId: string) {
+    return this.request(`/lease/${leaseId}/reject`, {
+      method: 'POST',
+    });
+  }
+
+  async cancelLease(leaseId: string) {
+    return this.request(`/lease/${leaseId}/cancel`, {
+      method: 'PATCH',
+    });
+  }
+
+  async updateTenantLease(leaseId: string, data: any) {
+    return this.request(`/lease/${leaseId}/update-tenant`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async approveLease(leaseId: string, data: any) {
+    return this.request(`/lease/${leaseId}/approve`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPropertyById(propertyId: string) {
+    return this.request(`/units/${propertyId}`);
+  }
 }
 
 export const apiService = new ApiService();

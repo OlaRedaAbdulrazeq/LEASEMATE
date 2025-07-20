@@ -4,12 +4,12 @@ const uploadToCloudinary = require("../utils/uploadtoCloudinary");
 
 // Register
 const register = async (req, res) => {
-  const { name, email, phone, password, role } = req.body;
-  const userExists = await User.findOne({ $or: [{ email }, { phone }] });
+  const { name, username, phone, password, role } = req.body;
+  const userExists = await User.findOne({ $or: [{ username }, { phone }] });
   if (userExists)
     return res.status(400).json({ message: "User already exists" });
 
-  const user = await User.create({ name, email, phone, password, role });
+  const user = await User.create({ name, username, phone, password, role });
   res.status(201).json({
     _id: user._id,
     name: user.name,
@@ -20,15 +20,15 @@ const register = async (req, res) => {
 
 //  Login
 const login = async (req, res) => {
-  const { emailOrPhone, password } = req.body;
+  const { usernameOrPhone, password } = req.body;
   const user = await User.findOne({
-    $or: [{ email: emailOrPhone }, { phone: emailOrPhone }],
+    $or: [{ email: usernameOrPhone }, { phone: usernameOrPhone }],
   });
 
   if (user && (await user.matchPassword(password))) {
     res.json({
       _id: user._id,
-      name: user.name,
+      name: user.name,   
       role: user.role,
       token: generateToken(user._id),
       verificationStatus: user.verificationStatus,

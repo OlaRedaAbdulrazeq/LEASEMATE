@@ -37,6 +37,10 @@ const unitSchema = new mongoose.Schema({
     type: Number,
     // required: true,
   },
+  deposit: {
+    type: Number,
+    // required: true,
+  },
 
   numRooms: {
     type: Number,

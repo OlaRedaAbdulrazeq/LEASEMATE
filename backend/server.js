@@ -4,6 +4,8 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const userRoutes = require('./routes/user.route');
 const adminRoutes = require('./routes/admin.route');
+const leaseRoutes = require('./routes/lease.route');
+const unitRoutes = require('./routes/unit.route');
 const path = require('path');
 
 const app = express();
@@ -13,7 +15,7 @@ connectDB();
 app.use(cors({
   origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS','PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -25,6 +27,10 @@ app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/lease', leaseRoutes);
+app.use('/api/units', unitRoutes);
+
+
 
 //global error handler
 app.use((error, req, res, next) => {

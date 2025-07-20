@@ -241,7 +241,7 @@ export default function Home() {
                     <span className="bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100 px-3 py-1 rounded-full text-sm font-medium">قريباً</span>
                   </div>
                   <button className="w-full bg-orange-500 dark:bg-orange-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-600 dark:hover:bg-orange-700 transition-colors">
-                    عرض التفاصيل
+                    <Link href="/contract/preview?propertyId=6879b4c2f41e0c3f68752e98" className="block w-full h-full">عرض التفاصيل</Link>
                   </button>
                 </div>
               </div>
