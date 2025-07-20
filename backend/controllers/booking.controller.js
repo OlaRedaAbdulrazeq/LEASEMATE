@@ -1,5 +1,6 @@
 const BookingRequest = require("../models/booking-request.model");
 const Unit = require("../models/unit.model");
+const notificationService = require('../services/notification.service');
 
 exports.createBookingRequest = async (req, res) => {
   try {
@@ -44,6 +45,26 @@ exports.createBookingRequest = async (req, res) => {
     });
 
     await newRequest.save();
+    
+    // Fetch unit to get ownerId and name
+    const unit = await Unit.findById(unitId);
+    if (unit && unit.ownerId) {
+      // Send notification to landlord
+      const notification = await notificationService.createNotification({
+        userId: unit.ownerId,
+        senderId: req.user._id,
+        type: 'BOOKING_REQUEST',
+        title: `لديك طلب ايجار جديد للوحده ${unit.name}`,
+        message: `لديك طلب ايجار جديد للوحده ${unit.name}`,
+        link: '/dashboard/booking-requests',
+        isRead: false
+      });
+      // Emit notification via socket.io
+      const io = req.app.get('io');
+      if (io) {
+        io.to(unit.ownerId.toString()).emit('newNotification', notification);
+      }
+    }
     
     console.log("Booking request created successfully:", newRequest._id);
     
