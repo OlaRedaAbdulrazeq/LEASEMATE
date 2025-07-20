@@ -17,6 +17,7 @@ router.post(
   [
     body("name")
       .notEmpty().withMessage("Name is required")
+      .isLength({ min: 4 }).withMessage("يجب أن يكون الاسم 4 أحرف على الأقل")
       .matches(/^[^\d]+$/).withMessage("Name must not contain numbers"),
     body("username")
       .notEmpty().withMessage("Username is required")
