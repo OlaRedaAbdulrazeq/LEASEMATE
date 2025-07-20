@@ -1,6 +1,8 @@
 const Lease = require("../models/lease.model");
 const BookingRequest = require("../models/booking-request.model");
 const puppeteer = require('puppeteer');
+const Unit = require("../models/unit.model");
+const notificationService = require('../services/notification.service');
 
 const createLease = async (req, res) => {
   console.log("=== CREATE LEASE DEBUG ===");
@@ -50,6 +52,26 @@ const createLease = async (req, res) => {
     // ربط العقد بالـBookingRequest (اختياري)
     booking.leaseId = lease._id;
     await booking.save();
+
+    // تحديث حالة الوحدة إلى 'booked'
+    await Unit.findByIdAndUpdate(booking.unitId._id, { status: "booked" });
+
+    // Send notification to tenant about lease approval
+    const notification = await notificationService.createNotification({
+      userId: booking.tenantId,
+      senderId: req.user._id,
+      leaseId: lease._id,
+      type: 'LEASE_APPROVED',
+      title: 'لقد تم الموافقه علي طلب الايجار',
+      message: 'لقد تم الموافقه علي طلب الايجار يمكنك الاطلاع علي العقد',
+      link: `/dashboard/lease/${lease._id}`,
+      isRead: false
+    });
+    // Emit notification via socket.io
+    const io = req.app.get('io');
+    if (io) {
+      io.to(booking.tenantId.toString()).emit('newNotification', notification);
+    }
 
     console.log("Lease created successfully:", lease._id);
     res.status(201).json({ message: "Lease created.", lease });
