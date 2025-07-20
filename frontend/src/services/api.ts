@@ -168,7 +168,7 @@ class ApiService {
 
   async rejectLease(leaseId: string) {
     return this.request(`/lease/${leaseId}/reject`, {
-      method: 'POST',
+      method: 'PATCH',
     });
   }
 

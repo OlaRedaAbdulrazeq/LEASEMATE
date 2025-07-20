@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { apiService } from '@/services/api';
 import RentalContractTemplate from '@/components/RentalContractTemplate';
+import Navbar from '@/components/Navbar';
 
 export default function LeasePreviewPage() {
   const { leaseId } = useParams();
@@ -72,6 +73,7 @@ export default function LeasePreviewPage() {
 
   return (
     <div className="min-h-screen bg-[#fff6ec] flex flex-col items-center justify-center py-10 px-4" dir="rtl">
+      <Navbar />
       <div className="w-full max-w-5xl bg-white p-8 rounded shadow">
         {leaseData.pdfUrl && (
           <div className="mb-6 text-center">
