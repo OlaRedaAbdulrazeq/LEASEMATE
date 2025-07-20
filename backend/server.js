@@ -33,6 +33,9 @@ setupSocket(io);
 // start cron jobs and pass `io`
 startLeaseExpiryJob(io);
 
+// Attach io to app for controller access
+app.set('io', io);
+
 connectDB();
 
 app.use(cors({
