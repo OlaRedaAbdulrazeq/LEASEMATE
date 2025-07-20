@@ -38,7 +38,10 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await apiService.login(formData);
+      const response = await apiService.login({
+        usernameOrPhone: formData.usernameOrPhone,
+        password: formData.password
+      });
       login(response.token, response); // Pass both token and user object
       // Redirect based on role
       if (response.role === 'admin') {

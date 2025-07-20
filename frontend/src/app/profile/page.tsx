@@ -2,10 +2,83 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { apiService } from '@/services/api';
+import { Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function ProfilePage() {
   const { user, isLoading } = useAuth();
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?._id) {
+      setLoadingReviews(true);
+      apiService.getReviewsForUser(user._id)
+        .then((res: any) => {
+          setReviews(res.data || []);
+          setLoadingReviews(false);
+        })
+        .catch((err: any) => {
+          setError(err.message || 'Failed to load reviews');
+          setLoadingReviews(false);
+        });
+    }
+  }, [user?._id]);
+
+  // Calculate rating distribution
+  const ratingCounts = [0, 0, 0, 0, 0]; // index 0 = 1 star, ... index 4 = 5 stars
+  reviews.forEach((r) => {
+    if (r.rating >= 1 && r.rating <= 5) {
+      ratingCounts[r.rating - 1]++;
+    }
+  });
+  const positive = ratingCounts[3] + ratingCounts[4];
+  const negative = ratingCounts[0] + ratingCounts[1];
+  const neutral = ratingCounts[2];
+
+  const chartData = {
+    labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
+    datasets: [
+      {
+        label: 'Number of Reviews',
+        data: ratingCounts,
+        backgroundColor: [
+          '#ef4444', // 1 star - red
+          '#f59e42', // 2 star - orange
+          '#fbbf24', // 3 star - yellow
+          '#4ade80', // 4 star - green
+          '#22c55e', // 5 star - dark green
+        ],
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      title: {
+        display: true,
+        text: 'Review Rating Distribution',
+      },
+    },
+    scales: {
+      y: { beginAtZero: true, precision: 0 },
+    },
+  };
 
   if (isLoading) {
     return (
@@ -26,7 +99,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-orange-50 dark:bg-stone-900">
       <Navbar />
-      <div className="flex items-center justify-center min-h-[calc(100vh-80px)]">{/* Adjust height for navbar */}
+      <div className="flex pt-20 items-center justify-center min-h-[calc(100vh-80px)]">{/* Adjust height for navbar */}
         <main className="max-w-2xl w-full p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-xl">
           <div className="flex flex-col items-center gap-4 mb-8">
             {user.avatarUrl ? (
@@ -63,6 +136,108 @@ export default function ProfilePage() {
               }>
                 {user.verificationStatus?.status ? user.verificationStatus.status.charAt(0).toUpperCase() + user.verificationStatus.status.slice(1) : 'Unknown'}
               </span>
+            </div>
+            {/* Reviews Section */}
+            <div className="mt-12" dir="rtl">
+              <h2 className="text-2xl font-extrabold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+                <span className="border-r-4 border-orange-400 pr-3">المراجعات عنك</span>
+              </h2>
+              {loadingReviews ? (
+                <div className="text-gray-700 dark:text-gray-200">جاري تحميل المراجعات...</div>
+              ) : error ? (
+                <div className="text-red-600 dark:text-red-300">{error}</div>
+              ) : (
+                <>
+                  <div className="mb-8 animate-fade-in">
+                    <Bar data={{
+                      ...chartData,
+                      labels: ['نجمة واحدة', 'نجمتان', '3 نجوم', '4 نجوم', '5 نجوم'],
+                      datasets: [{
+                        ...chartData.datasets[0],
+                        label: 'عدد المراجعات',
+                      }],
+                    }} options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        title: { ...chartOptions.plugins.title, text: 'توزيع تقييمات المراجعات' },
+                      },
+                    }} />
+                    <div className="flex gap-4 mt-4 justify-center">
+                      <span className="text-green-600 dark:text-green-400 font-semibold bg-green-50 dark:bg-green-900 px-3 py-1 rounded-full">إيجابي: {positive}</span>
+                      <span className="text-yellow-600 dark:text-yellow-400 font-semibold bg-yellow-50 dark:bg-yellow-900 px-3 py-1 rounded-full">محايد: {neutral}</span>
+                      <span className="text-red-600 dark:text-red-400 font-semibold bg-red-50 dark:bg-red-900 px-3 py-1 rounded-full">سلبي: {negative}</span>
+                    </div>
+                  </div>
+                  <div className="border-t border-orange-200 dark:border-orange-700 mb-8"></div>
+                  <div className="bg-orange-50/60 dark:bg-stone-800 rounded-2xl p-4">
+                    {reviews.length === 0 ? (
+                      <div className="text-gray-500 dark:text-gray-400 text-center py-8">لا توجد مراجعات بعد.</div>
+                    ) : (
+                      <ul className="grid gap-6">
+                        {reviews.map((review) => {
+                          // Sentiment badge - use rating as fallback if sentiment is null
+                          let sentimentColor = 'bg-gray-200 text-gray-700';
+                          let sentimentIcon = '😐';
+                          let sentimentText = 'محايد';
+                          
+                          // Determine sentiment from review.sentiment or fallback to rating
+                          let actualSentiment = review.sentiment;
+                          
+                          // If no sentiment from backend, use rating to determine sentiment
+                          if (!actualSentiment || actualSentiment === null || actualSentiment === undefined) {
+                            if (review.rating >= 4) {
+                              actualSentiment = 'positive';
+                            } else if (review.rating <= 2) {
+                              actualSentiment = 'negative';
+                            } else {
+                              actualSentiment = 'neutral';
+                            }
+                          }
+                          
+                          console.log('Review rating:', review.rating, 'Backend sentiment:', review.sentiment, 'Final sentiment:', actualSentiment);
+                          
+                          if (actualSentiment === 'positive') {
+                            sentimentColor = 'bg-green-100 text-green-700';
+                            sentimentIcon = '😊';
+                            sentimentText = 'إيجابي';
+                          } else if (actualSentiment === 'negative') {
+                            sentimentColor = 'bg-red-100 text-red-700';
+                            sentimentIcon = '😞';
+                            sentimentText = 'سلبي';
+                          }
+                          // Avatar or initials
+                          const avatar = review.reviewerId?.avatarUrl ? (
+                            <img src={review.reviewerId.avatarUrl} alt="الصورة الشخصية" className="w-10 h-10 rounded-full object-cover border-2 border-orange-300" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-orange-200 flex items-center justify-center text-lg font-bold text-orange-700">
+                              {review.reviewerId?.name?.charAt(0) || '?'}
+                            </div>
+                          );
+                          return (
+                            <li key={review._id} className="transition-shadow hover:shadow-xl bg-white dark:bg-gray-900 rounded-xl p-6 flex gap-4 items-start shadow-md">
+                              {avatar}
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-semibold text-gray-900 dark:text-gray-100 text-lg">{review.reviewerId?.name || 'مجهول'}</span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">({new Date(review.createdAt).toLocaleDateString('ar-EG')})</span>
+                                  <span className={`mr-2 px-2 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1 ${sentimentColor}`}>{sentimentIcon} {sentimentText}</span>
+                                </div>
+                                <div className="flex items-center gap-1 mb-2">
+                                  {[...Array(5)].map((_, i) => (
+                                    <span key={i} className={i < review.rating ? 'text-yellow-400 text-xl' : 'text-gray-300 text-xl'}>★</span>
+                                  ))}
+                                </div>
+                                <div className="text-gray-700 dark:text-gray-200 text-base leading-relaxed">{review.comment || <span className="italic text-gray-400">لا يوجد تعليق</span>}</div>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </main>

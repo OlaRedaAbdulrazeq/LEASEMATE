@@ -51,6 +51,7 @@ export default function AmenitiesForm({ data, onChange, unitType }: AmenitiesFor
               type="checkbox"
               checked={data[amenity.key as keyof AmenitiesData]}
               onChange={(e) => handleCheckboxChange(amenity.key, e.target.checked)}
+              suppressHydrationWarning
             />
             <span className="text-2xl">{amenity.icon}</span>
             <span className="text-gray-900 font-bold text-sm font-cairo group-hover:text-orange-600 transition-colors">

@@ -18,6 +18,9 @@ export default function Dashboard() {
   const [errorUnits, setErrorUnits] = useState<string | null>(null);
   const [pendingRequests, setPendingRequests] = useState(0);
   const [loadingRequests, setLoadingRequests] = useState(false);
+  const [myLeases, setMyLeases] = useState<any[]>([]);
+  const [loadingLeases, setLoadingLeases] = useState(false);
+  const [totalRentAmount, setTotalRentAmount] = useState(0);
 
   useEffect(() => {
     const fetchMyUnits = async () => {
@@ -53,8 +56,31 @@ export default function Dashboard() {
       }
     };
 
+    const fetchMyLeases = async () => {
+      if (user?.role !== 'tenant') return;
+      setLoadingLeases(true);
+      try {
+        const res = await apiService.getMyLeases() as any;
+        const leases = res.data?.leases || [];
+        setMyLeases(leases);
+        
+        // Calculate total rent amount
+        const total = leases.reduce((sum: number, lease: any) => {
+          return sum + (lease.rentAmount || 0);
+        }, 0);
+        setTotalRentAmount(total);
+      } catch (err: any) {
+        console.error('Error fetching leases:', err);
+        setMyLeases([]);
+        setTotalRentAmount(0);
+      } finally {
+        setLoadingLeases(false);
+      }
+    };
+
     fetchMyUnits();
     fetchPendingRequests();
+    fetchMyLeases();
   }, [user]);
 
   return (
@@ -146,7 +172,9 @@ export default function Dashboard() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-300">{user?.role === 'landlord' ? 'عدد الممتلكات النشطة' : 'عدد العقود النشطة'}</span>
-                    <span className="font-bold text-gray-900 dark:text-white">{user?.role === 'landlord' ? myUnits.length : 3}</span>
+                    <span className="font-bold text-gray-900 dark:text-white">
+                      {user?.role === 'landlord' ? myUnits.length : (loadingLeases ? '...' : myLeases.length)}
+                    </span>
                   </div>
                   {user?.role === 'landlord' && (
                     <div className="flex justify-between">
@@ -159,7 +187,9 @@ export default function Dashboard() {
                   {user?.role === 'tenant' && (
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-300">إجمالي الإيجار</span>
-                      <span className="font-bold text-orange-600 dark:text-orange-400">$3,600</span>
+                      <span className="font-bold text-orange-600 dark:text-orange-400">
+                        {loadingLeases ? '...' : `${totalRentAmount.toLocaleString()} جنيه`}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -171,12 +201,12 @@ export default function Dashboard() {
               <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 shadow-lg">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">إجراءات سريعة</h3>
                 <div className="space-y-3">
-                  <Link href="/dashboard/maintenance-requests">
+                  {/* <Link href="/dashboard/maintenance-requests">
                     <button className="w-full text-left p-3 rounded-lg bg-orange-500 dark:bg-orange-600 text-white font-medium hover:bg-orange-600 dark:hover:bg-orange-700 transition-colors">
                       طلبات الصيانة
                     </button>
                   </Link>
-                  <button className="w-full text-left p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                  <button className="w-full text-left p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"> */}
                   {user?.role === 'landlord' ? (
                     <>
                       <a
@@ -193,9 +223,11 @@ export default function Dashboard() {
                       </a>
                     </>
                   ) : (
-                    <button className="w-full text-center p-3 rounded-lg bg-orange-500 dark:bg-orange-600 text-white font-medium hover:bg-orange-600 dark:hover:bg-orange-700 transition-colors">
-                      ارسال طلب صيانة
-                    </button>
+                    <Link href="/dashboard/maintenance-requests">
+                      <button className="w-full text-center p-3 rounded-lg bg-orange-500 dark:bg-orange-600 text-white font-medium hover:bg-orange-600 dark:hover:bg-orange-700 transition-colors">
+                        ارسال طلب صيانة
+                      </button>
+                    </Link>
                   )}
                   <button className="w-full text-center p-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
                     عرض المستندات
