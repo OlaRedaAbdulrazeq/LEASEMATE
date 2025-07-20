@@ -9,7 +9,7 @@ export interface RegisterData {
 }
 
 export interface LoginData {
-  emailOrPhone: string;
+  usernameOrPhone: string;
   password: string;
 }
 
@@ -107,33 +107,21 @@ class ApiService {
       ...options,
     };
 
-    console.log("Request config:", {
-      url,
-      method: config.method,
-      body: config.body,
-      headers: config.headers
-    });
-
     try {
       const response = await fetch(url, config);
 
-      console.log("Response status:", response.status);
-      console.log("Response headers:", Object.fromEntries(response.headers.entries()));
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error("API Error Response:", {
-          status: response.status,
-          statusText: response.statusText,
-          errorData
-        });
+        // If backend returns validation errors, throw them as a JSON string
+        if (errorData.errors) {
+          throw new Error(JSON.stringify({ errors: errorData.errors }));
+        }
         throw new Error(
           errorData.message || errorData.error || `HTTP error! status: ${response.status}`
         );
       }
 
       const result = await response.json();
-      console.log("API Success Response:", result);
       return result;
     } catch (error) {
       if (
@@ -353,12 +341,6 @@ class ApiService {
     
     const requestData = { unitId, message };
     
-    console.log("=== FRONTEND BOOKING REQUEST DEBUG ===");
-    console.log("Token exists:", !!token);
-    console.log("Request data:", requestData);
-    console.log("JSON stringified:", JSON.stringify(requestData));
-    console.log("=====================================");
-    
     return this.request("/booking/request", {
       method: "POST",
       headers: {
@@ -372,11 +354,6 @@ class ApiService {
   async getLandlordBookingRequests() {
     const token = localStorage.getItem("leasemate_token");
     if (!token) throw new Error("يجب تسجيل الدخول أولاً");
-    
-    console.log("=== GET LANDLORD BOOKING REQUESTS DEBUG ===");
-    console.log("Token exists:", !!token);
-    console.log("Token preview:", token.substring(0, 20) + "...");
-    console.log("===========================================");
     
     return this.request("/booking/landlord-requests", {
       headers: {
@@ -394,11 +371,6 @@ class ApiService {
   }) {
     const token = localStorage.getItem("leasemate_token");
     if (!token) throw new Error("يجب تسجيل الدخول أولاً");
-    
-    console.log("=== CREATE LEASE FOR BOOKING DEBUG ===");
-    console.log("BookingId:", bookingId);
-    console.log("Lease data:", leaseData);
-    console.log("=====================================");
     
     return this.request(`/leases/create/${bookingId}`, {
       method: "POST",
@@ -422,9 +394,6 @@ class ApiService {
     const url = `${API_BASE_URL}/leases/${leaseId}/pdf`;
     const token = localStorage.getItem("leasemate_token");
     
-    console.log('Downloading PDF for lease:', leaseId);
-    console.log('Token exists:', !!token);
-    
     try {
       const response = await fetch(url, {
         method: "GET",
@@ -434,12 +403,8 @@ class ApiService {
         credentials: "include",
       });
 
-      console.log('Response status:', response.status);
-      console.log('Content-Type:', response.headers.get('content-type'));
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('PDF download error response:', errorData);
         throw new Error(
           errorData.message || `HTTP error! status: ${response.status}`
         );
@@ -448,13 +413,11 @@ class ApiService {
       // التحقق من نوع المحتوى
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/pdf')) {
-        console.error('Invalid content type:', contentType);
         throw new Error('الملف المستلم ليس PDF صالح');
       }
 
       // Get the PDF blob
       const blob = await response.blob();
-      console.log('PDF blob size:', blob.size, 'bytes');
       
       if (blob.size === 0) {
         throw new Error('الملف فارغ');
@@ -471,10 +434,8 @@ class ApiService {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
 
-      console.log('PDF downloaded successfully');
       return { success: true };
     } catch (error) {
-      console.error("PDF download error:", error);
       throw error;
     }
   }
