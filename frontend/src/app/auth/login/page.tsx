@@ -26,7 +26,7 @@ export default function LoginPage() {
       } else if (user.role === 'landlord' && user.verificationStatus && user.verificationStatus.status === 'approved') {
         router.push('/dashboard');
       } else if (user.role === 'tenant' && user.verificationStatus && user.verificationStatus.status === 'approved') {
-        router.push('/');
+        router.push('/unit');
       } else {
         router.push('/');
       }
@@ -62,7 +62,7 @@ export default function LoginPage() {
       } else if (response.role === 'landlord' && response.verificationStatus && response.verificationStatus.status === 'approved') {
         router.push('/dashboard');
       } else if (response.role === 'tenant' && response.verificationStatus && response.verificationStatus.status === 'approved') {
-        router.push('/');
+        router.push('/units');
       } else {
         router.push('/');
       }
