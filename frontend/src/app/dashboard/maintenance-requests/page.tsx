@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import axios from "axios";
+import { io, Socket } from "socket.io-client";
 
 interface MaintenanceRequest {
   _id: string;
@@ -13,24 +14,87 @@ interface MaintenanceRequest {
   status: "pending" | "in progress" | "resolved";
   notes?: string;
   createdAt: string;
-  _landlordNote?: string;
+  _landlordNote?: string; // Added for landlord's note
+}
+
+// Add Unit interface
+interface Unit {
+  _id: string;
+  name: string;
+  address?: string;
 }
 
 export default function MaintenanceRequestsPage() {
-  const { user, token } = useAuth();
-  const [form, setForm] = useState({ title: "", description: "", image: null as File | null });
+  const { user, token, socket } = useAuth();
+  // Add unitId and contractId to form state
+  const [form, setForm] = useState({ title: "", description: "", image: null as File | null, unitId: "", contractId: "" });
   const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [units, setUnits] = useState<Unit[]>([]); // Store tenant's units
+  const [leases, setLeases] = useState<any[]>([]); // Store tenant's leases
+  const [formLoading, setFormLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [unitsLoading, setUnitsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [localDates, setLocalDates] = useState<{ [id: string]: string }>({});
   const [openImage, setOpenImage] = useState<string | null>(null);
 
+  // Listen for maintenance request events using the shared socket
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    console.log('🔌 Socket status:', socket?.connected ? 'Connected' : 'Disconnected');
+    console.log('🔌 Socket ID:', socket?.id);
+    
+    if (socket) {
+      const handleRequestCreated = (data: any) => {
+        console.log('🆕 New maintenance request:', data);
+        // Add the new request to the list
+        setRequests(prev => [data.request, ...prev]);
+        // Show success message
+        setSuccess(data.message);
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(""), 3000);
+      };
+
+      const handleRequestUpdated = (data: any) => {
+        console.log('🔄 Maintenance request updated:', data);
+        // Update the request in the list
+        setRequests(prev => prev.map(req => 
+          req._id === data.request._id ? data.request : req
+        ));
+        // Show success message
+        setSuccess(data.message);
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(""), 3000);
+      };
+
+      // Add event listeners
+      socket.on('maintenanceRequestCreated', handleRequestCreated);
+      socket.on('maintenanceRequestUpdated', handleRequestUpdated);
+
+      // Cleanup event listeners
+      return () => {
+        socket.off('maintenanceRequestCreated', handleRequestCreated);
+        socket.off('maintenanceRequestUpdated', handleRequestUpdated);
+      };
+    }
+  }, [socket]);
+
+  // Fetch tenant's units on mount (if tenant)
+  useEffect(() => {
+    if (user?.role === "tenant" && token) {
+      fetchUnits();
+    }
+  }, [user?.role, token]);
+
+  // جلب الطلبات عند التحميل
+  useEffect(() => {
+    if (token) {
+      fetchRequests();
+    }
+  }, [token]);
 
   useEffect(() => {
+    // بعد جلب الطلبات، احسبي التواريخ المحلية
     const dates: { [id: string]: string } = {};
     requests.forEach((req) => {
       dates[req._id] = new Date(req.createdAt).toLocaleString();
@@ -40,8 +104,8 @@ export default function MaintenanceRequestsPage() {
 
   const fetchRequests = async () => {
     try {
-      setLoading(true);
-      console.log("Current token:", token);
+      setDataLoading(true);
+      console.log("Current token:", token); // للتشخيص
       if (!token) {
         setError("يجب تسجيل الدخول أولاً");
         return;
@@ -54,15 +118,55 @@ export default function MaintenanceRequestsPage() {
       });
       setRequests(res.data);
     } catch (err) {
-      console.error("Error fetching requests:", err);
+      console.error("Error fetching requests:", err); // للتشخيص
       setError("حدث خطأ أثناء جلب الطلبات");
     } finally {
-      setLoading(false);
+      setDataLoading(false);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const fetchUnits = async () => {
+    try {
+      setUnitsLoading(true);
+      // Fetch tenant's leases to get their units
+      const res = await axios.get("http://localhost:5000/api/leases/my-leases", {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+      
+      const leases = res.data.data?.leases || [];
+      setLeases(leases);
+      
+      // Extract units from leases
+      const tenantUnits = leases.map((lease: any) => ({
+        _id: lease.unitId._id,
+        name: lease.unitId.name,
+        address: lease.unitId.address
+      }));
+      
+      setUnits(tenantUnits);
+    } catch (err) {
+      console.error("Error fetching tenant units:", err);
+      setError("حدث خطأ أثناء جلب الوحدات");
+    } finally {
+      setUnitsLoading(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    
+    if (name === 'unitId') {
+      // Find the corresponding lease for the selected unit
+      const selectedLease = leases.find(lease => lease.unitId._id === value);
+      setForm({ 
+        ...form, 
+        unitId: value,
+        contractId: selectedLease?._id || ""
+      });
+    } else {
+      setForm({ ...form, [name]: value });
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,8 +179,8 @@ export default function MaintenanceRequestsPage() {
     e.preventDefault();
     setError("");
     setSuccess("");
-    if (!form.title || !form.description) {
-      setError("يرجى إدخال جميع البيانات");
+    if (!form.title || !form.description || !form.unitId) {
+      setError("يرجى إدخال جميع البيانات واختيار الوحدة");
       return;
     }
     if (!token) {
@@ -84,10 +188,12 @@ export default function MaintenanceRequestsPage() {
       return;
     }
     try {
-      setLoading(true);
+      setFormLoading(true);
       const formData = new FormData();
       formData.append("title", form.title);
       formData.append("description", form.description);
+      formData.append("unitId", form.unitId);
+      if (form.contractId) formData.append("contractId", form.contractId);
       if (form.image) formData.append("image", form.image);
       await axios.post("http://localhost:5000/api/maintenance", formData, {
         headers: {
@@ -97,44 +203,64 @@ export default function MaintenanceRequestsPage() {
         withCredentials: true,
       });
       setSuccess("تم إرسال الطلب بنجاح");
-      setForm({ title: "", description: "", image: null });
-      fetchRequests();
+      setForm({ title: "", description: "", image: null, unitId: "", contractId: "" });
+      // Remove fetchRequests() - let real-time update handle it
     } catch (err) {
-      console.error("Error submitting request:", err);
+      console.error("Error submitting request:", err); // للتشخيص
       setError("حدث خطأ أثناء إرسال الطلب");
     } finally {
-      setLoading(false);
+      setFormLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
-      <main className="mt-12 pt-4 pb-16 px-4 max-w-2xl mx-auto">
+      <main className="mt-20 pt-4 pb-16 px-4 max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">طلبات الصيانة</h1>
         {user?.role === "tenant" && (
           <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 mb-8">
             <div className="mb-4">
+              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">الوحدة</label>
+              <select
+                name="unitId"
+                value={form.unitId}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                required
+                disabled={unitsLoading}
+              >
+                <option value="">
+                  {unitsLoading ? "جاري تحميل الوحدات..." : "اختر الوحدة"}
+                </option>
+                {units.map((unit) => (
+                  <option key={unit._id} value={unit._id}>
+                    {unit.name} {unit.address ? `- ${unit.address}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="mb-4">
               <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">عنوان العطل</label>
-              <input type="text" name="title" value={form.title} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white" required />
+              <input type="text" name="title" value={form.title} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white" required disabled={formLoading} />
             </div>
             <div className="mb-4">
               <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">وصف العطل</label>
-              <textarea name="description" value={form.description} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white" required />
+              <textarea name="description" value={form.description} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white" required disabled={formLoading} />
             </div>
             <div className="mb-4">
               <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">صورة العطل (اختياري)</label>
-              <input type="file" accept="image/*" onChange={handleFileChange} className="w-full" />
+              <input type="file" accept="image/*" onChange={handleFileChange} className="w-full" disabled={formLoading} />
             </div>
             {error && <div className="mb-2 text-red-600 text-center">{error}</div>}
             {success && <div className="mb-2 text-green-600 text-center">{success}</div>}
-            <button type="submit" disabled={loading} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-semibold text-lg mt-2 disabled:opacity-50">
-              {loading ? "...جاري الإرسال" : "إرسال الطلب"}
+            <button type="submit" disabled={formLoading || unitsLoading || units.length === 0} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-semibold text-lg mt-2 disabled:opacity-50">
+              {formLoading ? "...جاري الإرسال" : "إرسال الطلب"}
             </button>
           </form>
         )}
         <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">الطلبات السابقة</h2>
-        {loading ? (
+        {dataLoading ? (
           <div className="text-center">جاري التحميل...</div>
         ) : requests.length === 0 ? (
           <div className="text-center text-gray-500">لا توجد طلبات صيانة بعد.</div>
@@ -159,24 +285,31 @@ export default function MaintenanceRequestsPage() {
                 {req.notes && <div className="text-sm text-gray-500 mt-2">ملاحظة: {req.notes}</div>}
                 {user?.role === 'landlord' && (
                   <div className="mt-2 flex flex-col gap-2">
-                    <textarea
-                      placeholder="اكتب ملاحظة للمستأجر..."
-                      className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm"
-                      value={req._landlordNote || ''}
-                      onChange={e => {
-                        setRequests(prev => prev.map(r => r._id === req._id ? { ...r, _landlordNote: e.target.value } : r));
-                      }}
-                    />
+                    {req.status !== 'resolved' && (
+                      <textarea
+                        placeholder="اكتب ملاحظة للمستأجر..."
+                        className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm"
+                        value={req._landlordNote || ''}
+                        onChange={e => {
+                          setRequests(prev => prev.map(r => r._id === req._id ? { ...r, _landlordNote: e.target.value } : r));
+                        }}
+                      />
+                    )}
                     <div className="flex gap-2">
                       {req.status === 'pending' && (
                         <button
                           className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
                           onClick={async () => {
-                            await axios.patch(`http://localhost:5000/api/maintenance/${req._id}`,
-                              { status: 'in progress', notes: req._landlordNote || '' },
-                              { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
-                            );
-                            fetchRequests();
+                            try {
+                              await axios.patch(`http://localhost:5000/api/maintenance/${req._id}`,
+                                { status: 'in progress', notes: req._landlordNote || '' },
+                                { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
+                              );
+                              // Remove fetchRequests() - let real-time update handle it
+                            } catch (error) {
+                              console.error('Error updating request:', error);
+                              setError('حدث خطأ أثناء تحديث الطلب');
+                            }
                           }}
                         >
                           قبول الطلب (جاري التنفيذ)
@@ -186,11 +319,16 @@ export default function MaintenanceRequestsPage() {
                         <button
                           className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
                           onClick={async () => {
-                            await axios.patch(`http://localhost:5000/api/maintenance/${req._id}`,
-                              { status: 'resolved', notes: req._landlordNote || '' },
-                              { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
-                            );
-                            fetchRequests();
+                            try {
+                              await axios.patch(`http://localhost:5000/api/maintenance/${req._id}`,
+                                { status: 'resolved', notes: req._landlordNote || '' },
+                                { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
+                              );
+                              // Remove fetchRequests() - let real-time update handle it
+                            } catch (error) {
+                              console.error('Error updating request:', error);
+                              setError('حدث خطأ أثناء تحديث الطلب');
+                            }
                           }}
                         >
                           تم الحل
@@ -199,12 +337,16 @@ export default function MaintenanceRequestsPage() {
                     </div>
                   </div>
                 )}
+                {/* <div className="text-xs text-gray-400 mt-1">
+                  تاريخ الإرسال: {localDates[req._id] || ""}
+                </div> */}
               </li>
             ))}
           </ul>
         )}
       </main>
 
+      {/* Modal لعرض الصورة */}
       {openImage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
           <div className="relative">
