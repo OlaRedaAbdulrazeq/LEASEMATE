@@ -29,11 +29,11 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between whitespace-nowrap bg-orange-200 border-b border-orange-100 shadow-md px-6 sm:px-10 py-1.5 h-14">
+      <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between whitespace-nowrap bg-white/70 px-6 sm:px-10  backdrop-blur-sm shadow-sm">
         <div className="flex items-center gap-3 text-gray-900 pl-2">
           {" "}
           {/* Added pl-2 for spacing */}
-          <Logo size={70} />
+          <Logo size={100} />
         </div>
 
         <nav
