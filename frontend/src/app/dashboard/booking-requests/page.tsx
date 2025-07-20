@@ -52,7 +52,7 @@ export default function BookingRequestsPage() {
     }
 
     const fetchRequests = async () => {
-      setLoading(true);
+      // setLoading(true);
       try {
         console.log("=== BOOKING REQUESTS PAGE DEBUG ===");
         console.log("User:", user);
@@ -110,6 +110,7 @@ export default function BookingRequestsPage() {
   };
 
   return (
+    
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
       <div className="max-w-4xl mx-auto pt-20 px-4">
