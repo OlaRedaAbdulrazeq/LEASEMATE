@@ -39,29 +39,45 @@ export default function ProfilePage() {
     }
   }, [user?._id]);
 
-  // Calculate rating distribution
-  const ratingCounts = [0, 0, 0, 0, 0]; // index 0 = 1 star, ... index 4 = 5 stars
+  // Calculate sentiment distribution based on database sentiment field
+  let positive = 0;
+  let negative = 0;
+  let neutral = 0;
+  
   reviews.forEach((r) => {
-    if (r.rating >= 1 && r.rating <= 5) {
-      ratingCounts[r.rating - 1]++;
+    // Use sentiment from database, fallback to rating only if sentiment is null/undefined
+    let actualSentiment = r.sentiment;
+    
+    if (!actualSentiment || actualSentiment === null || actualSentiment === undefined) {
+      // Fallback to rating-based sentiment only if no sentiment from database
+      if (r.rating >= 4) {
+        actualSentiment = 'ايجابي';
+      } else if (r.rating <= 2) {
+        actualSentiment = 'سلبية';
+      } else {
+        actualSentiment = 'محايد';
+      }
+    }
+    
+    if (actualSentiment === 'ايجابي') {
+      positive++;
+    } else if (actualSentiment === 'سلبية') {
+      negative++;
+    } else {
+      neutral++;
     }
   });
-  const positive = ratingCounts[3] + ratingCounts[4];
-  const negative = ratingCounts[0] + ratingCounts[1];
-  const neutral = ratingCounts[2];
 
   const chartData = {
-    labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
+    labels: ['إيجابي', 'محايد', 'سلبية'],
     datasets: [
       {
-        label: 'Number of Reviews',
-        data: ratingCounts,
+        label: 'عدد المراجعات',
+        data: [positive, neutral, negative],
         backgroundColor: [
-          '#ef4444', // 1 star - red
-          '#f59e42', // 2 star - orange
-          '#fbbf24', // 3 star - yellow
-          '#4ade80', // 4 star - green
-          '#22c55e', // 5 star - dark green
+          '#22c55e', // positive - green
+          '#fbbf24', // neutral - yellow
+          '#ef4444', // negative - red
         ],
       },
     ],
@@ -158,7 +174,7 @@ export default function ProfilePage() {
                   <div className="mb-8 animate-fade-in">
                     <Bar data={{
                       ...chartData,
-                      labels: ['نجمة واحدة', 'نجمتان', '3 نجوم', '4 نجوم', '5 نجوم'],
+                      labels: ['إيجابي', 'محايد', 'سلبية'],
                       datasets: [{
                         ...chartData.datasets[0],
                         label: 'عدد المراجعات',
@@ -194,11 +210,11 @@ export default function ProfilePage() {
                           // If no sentiment from backend, use rating to determine sentiment
                           if (!actualSentiment || actualSentiment === null || actualSentiment === undefined) {
                             if (review.rating >= 4) {
-                              actualSentiment = 'positive';
+                              actualSentiment = 'ايجابي';
                             } else if (review.rating <= 2) {
-                              actualSentiment = 'negative';
+                              actualSentiment = 'سلبية';
                             } else {
-                              actualSentiment = 'neutral';
+                              actualSentiment = 'محايد';
                             }
                           }
                           
@@ -208,10 +224,10 @@ export default function ProfilePage() {
                             sentimentColor = 'bg-green-100 text-green-700';
                             sentimentIcon = '😊';
                             sentimentText = 'ايجابي';
-                          } else if (actualSentiment === 'سلبي') {
+                          } else if (actualSentiment === 'سلبية') {
                             sentimentColor = 'bg-red-100 text-red-700';
                             sentimentIcon = '😞';
-                            sentimentText = 'سلبي';
+                            sentimentText = 'سلبية';
                           }
                           // Avatar or initials
                           const avatar = review.reviewerId?.avatarUrl ? (
