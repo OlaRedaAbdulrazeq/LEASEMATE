@@ -114,8 +114,14 @@ export default function NotificationsPage() {
         return 'تحديث طلب الصيانة';
       case 'LEASE_EXPIRED':
         return 'انتهاء عقد الإيجار';
-      default:
+      case 'LEASE_APPROVED':
+        return 'تمت الموافقة على عقد الإيجار';
+      case 'BOOKING_REQUEST':
+        return 'طلب حجز جديد';
+      case 'GENERAL':
         return 'إشعار عام';
+      default:
+        return 'إشعار';
     }
   };
 
@@ -181,7 +187,7 @@ export default function NotificationsPage() {
                     onClick={() => {
                       if (isLeaseExpired && reviewSubmitted) return; // Do nothing if review exists
                       if (isLeaseExpired) {
-                        handleNotificationClick(notification, !!reviewSubmitted);
+                        handleNotificationClick(notification);
                       } else {
                         handleNotificationClick(notification);
                       }
@@ -199,8 +205,16 @@ export default function NotificationsPage() {
                           </h3>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-gray-500">
-                              {new Date(notification.createdAt).toLocaleDateString('ar-SA')}
+                              {new Date(notification.createdAt).toLocaleString('ar-EG', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                                hour: 'numeric',
+                                minute: 'numeric',
+                                hour12: true, // يعرض الوقت بصيغة ١٢ ساعة مع ص/م
+                              })}
                             </span>
+
                             {!notification.isRead && (
                               <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                             )}
