@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect,useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { io, Socket } from 'socket.io-client';
 
@@ -48,19 +48,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
- const socketRef = useRef<Socket | null>(null);
+
+  const socketRef = useRef<Socket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null); // ✅ Make socket reactive
 
   useEffect(() => {
-    // Check for existing token on app load
     const storedToken = localStorage.getItem('leasemate_token');
     if (storedToken) {
       try {
         const decoded = jwtDecode(storedToken) as any;
         const currentTime = Date.now() / 1000;
-        
+
         if (decoded.exp > currentTime) {
           setToken(storedToken);
-          // Fetch user data
           fetchUserData(storedToken);
         } else {
           localStorage.removeItem('leasemate_token');
@@ -70,7 +70,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     setIsLoading(false);
-  return () => {
+
+    return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
@@ -88,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     socketRef.current.on('connect', () => {
       console.log('✅ WebSocket connected:', socketRef.current?.id);
       socketRef.current?.emit('join', userId);
+      setSocket(socketRef.current); // ✅ Update reactive socket state
     });
 
     socketRef.current.on('disconnect', () => {
@@ -99,16 +101,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-
-  // Polling: fetch user data every 10 seconds to update verification status automatically
   useEffect(() => {
     if (token) {
       const interval = setInterval(() => {
         fetchUserData(token);
-      }, 10000); // 10 seconds
+      }, 10000); // Poll every 10s
       return () => clearInterval(interval);
     }
   }, [token]);
+
+  useEffect(() => {
+    if (user && user._id) {
+      connectWebSocket(user._id);
+    }
+  }, [user]);
 
   const fetchUserData = async (authToken: string) => {
     try {
@@ -119,11 +125,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
-        connectWebSocket(userData._id);
+        // connectWebSocket(userData._id); // 🧠 Connect after user loads - Moved to useEffect
       } else {
         localStorage.removeItem('leasemate_token');
       }
@@ -137,22 +143,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('leasemate_token', authToken);
     setToken(authToken);
     setUser(userObj);
-    fetchUserData(authToken);    
+    fetchUserData(authToken);
   };
 
   const logout = () => {
     localStorage.removeItem('leasemate_token');
     setToken(null);
     setUser(null);
-      if (socketRef.current) {
+    if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
+      setSocket(null); // ✅ clear reactive socket
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading ,socket: socketRef.current}}>
+    <AuthContext.Provider value={{ user, token, login, logout, isLoading, socket }}>
       {children}
     </AuthContext.Provider>
   );
-}; 
+};
