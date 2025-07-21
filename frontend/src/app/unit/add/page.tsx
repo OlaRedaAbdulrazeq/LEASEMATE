@@ -287,7 +287,7 @@ export default function AddUnitPage() {
       <main className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 py-8 text-gray-900 dark:text-white pt-14">
         <Navbar/>
         <Toaster />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl pt-20 mx-auto px-4 sm:px-6 lg:px-8">
         <header className="mb-10 text-center">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4 font-cairo">
             إضافة وحدة جديدة
