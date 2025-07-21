@@ -34,7 +34,7 @@ export default function MyUnitsPage() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-white pt-14">
       <Toaster position="top-center" />
       <Navbar />
-      <div className="max-w-7xl mx-auto px-4 py-10">
+      <div className="max-w-7xl mx-auto pt-20 px-4 py-10">
         <h1 className="text-3xl font-bold mb-8 text-center">ممتلكاتي</h1>
         {loading ? (
           <div className="text-center text-gray-600 dark:text-gray-300">جاري التحميل...</div>
