@@ -482,6 +482,13 @@ class ApiService {
       throw error;
     }
   }
+  async getUserById(userId: string) {
+    return this.request(`/users/${userId}`);
+  }
+
+  async getUnitsByLandlord(landlordId: string) {
+    return this.request(`/units?ownerId=${landlordId}`);
+  }
 }
 
 export const apiService = new ApiService();
