@@ -61,7 +61,6 @@ export default function LeaseDetailsPage() {
   if (!lease) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
-        <Navbar />
         <div className="text-center pt-32 text-lg text-red-600">
           لم يتم العثور على العقد
         </div>
@@ -72,7 +71,6 @@ export default function LeaseDetailsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
-      <Navbar />
       <div className="max-w-4xl mx-auto pt-20 px-4">
         <div className="flex justify-between items-center mb-6 no-print">
           <h1 className="text-3xl font-bold text-orange-600 dark:text-orange-400">
