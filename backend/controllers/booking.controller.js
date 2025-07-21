@@ -62,7 +62,13 @@ exports.createBookingRequest = async (req, res) => {
       // Emit notification via socket.io
       const io = req.app.get('io');
       if (io) {
-        io.to(unit.ownerId.toString()).emit('newNotification', notification);
+        console.log('📡 Emitting newNotification to landlord:', unit.ownerId.toString());
+        // Populate senderId before emitting
+        const populatedNotification = await notification.populate('senderId', 'name avatarUrl');
+        io.to(unit.ownerId.toString()).emit('newNotification', populatedNotification);
+        console.log('✅ Booking notification emitted successfully');
+      } else {
+        console.error('❌ Socket.io instance not available');
       }
     }
     
@@ -101,10 +107,10 @@ exports.getLandlordBookings = async (req, res) => {
       .populate("unitId", "name ownerId")
       .lean();
 
-    console.log("All pending bookings:", bookings.length);
-    console.log("Sample booking:", bookings[0]);
-    console.log("Sample booking unitId:", bookings[0]?.unitId);
-    console.log("Sample booking tenantId:", bookings[0]?.tenantId);
+    // console.log("All pending bookings:", bookings.length);
+    // console.log("Sample booking:", bookings[0]);
+    // console.log("Sample booking unitId:", bookings[0]?.unitId);
+    // console.log("Sample booking tenantId:", bookings[0]?.tenantId);
 
     // فلترة الطلبات للمالك الحالي فقط
     const landlordBookings = bookings.filter((booking) => {
@@ -118,7 +124,7 @@ exports.getLandlordBookings = async (req, res) => {
       return isOwner;
     });
 
-    console.log("Filtered bookings for landlord:", landlordBookings.length);
+    // console.log("Filtered bookings for landlord:", landlordBookings.length);
 
     res.json({ 
       status: "success", 

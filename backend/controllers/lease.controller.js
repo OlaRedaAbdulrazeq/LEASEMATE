@@ -5,13 +5,13 @@ const Unit = require("../models/unit.model");
 const notificationService = require('../services/notification.service');
 
 const createLease = async (req, res) => {
-  console.log("=== CREATE LEASE DEBUG ===");
-  console.log("URL:", req.url);
-  console.log("Method:", req.method);
-  console.log("Params:", req.params);
-  console.log("Body:", req.body);
-  console.log("User:", req.user);
-  console.log("==========================");
+  // console.log("=== CREATE LEASE DEBUG ===");
+  // console.log("URL:", req.url);
+  // console.log("Method:", req.method);
+  // console.log("Params:", req.params);
+  // console.log("Body:", req.body);
+  // console.log("User:", req.user);
+  // console.log("==========================");
   
   try {
     const { bookingId } = req.params;
@@ -70,7 +70,12 @@ const createLease = async (req, res) => {
     // Emit notification via socket.io
     const io = req.app.get('io');
     if (io) {
-      io.to(booking.tenantId.toString()).emit('newNotification', notification);
+      console.log('📡 Emitting newNotification to tenant:', booking.tenantId.toString());
+      const populatedNotification = await notification.populate('senderId', 'name avatarUrl');
+      io.to(booking.tenantId.toString()).emit('newNotification', populatedNotification);
+      console.log('✅ Lease approval notification emitted successfully');
+    } else {
+      console.error('❌ Socket.io instance not available');
     }
 
     console.log("Lease created successfully:", lease._id);
@@ -113,7 +118,7 @@ const getMyLeases = async (req, res) => {
 // توليد وتحميل عقد الإيجار PDF
 const generateLeasePDF = async (req, res) => {
   try {
-    console.log('=== GENERATE PDF START ===');
+    // console.log('=== GENERATE PDF START ===');
     const { leaseId } = req.params;
     console.log('LeaseId:', leaseId);
     
@@ -127,9 +132,9 @@ const generateLeasePDF = async (req, res) => {
       return res.status(404).json({ message: 'لم يتم العثور على العقد.' });
     }
 
-    console.log('Lease found:', lease._id);
-    console.log('Landlord:', lease.landlordId?.name);
-    console.log('Tenant:', lease.tenantId?.name);
+    // console.log('Lease found:', lease._id);
+    // console.log('Landlord:', lease.landlordId?.name);
+    // console.log('Tenant:', lease.tenantId?.name);
 
     // إنشاء HTML content بسيط
     const htmlContent = `

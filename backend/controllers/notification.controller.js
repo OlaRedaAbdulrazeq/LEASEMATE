@@ -46,7 +46,13 @@ exports.createNotification = async (req, res) => {
 
       const io = req.app.get('io');
       if (io) {
-        io.to(userId).emit('newNotification', notification);
+        console.log('📡 Emitting newNotification to user:', userId);
+        // Populate senderId before emitting
+        const populatedNotification = await notification.populate('senderId', 'name avatarUrl');
+        io.to(userId).emit('newNotification', populatedNotification);
+        console.log('✅ Notification emitted successfully');
+      } else {
+        console.error('❌ Socket.io instance not available');
       }
 
       return res.status(201).json({
@@ -96,7 +102,13 @@ exports.createNotification = async (req, res) => {
     const io = req.app.get('io');
 
     if (io) {
-      io.to(userId).emit('newNotification', notification);
+      console.log('📡 Emitting newNotification to user:', userId);
+      // Populate senderId before emitting
+      const populatedNotification = await notification.populate('senderId', 'name avatarUrl');
+      io.to(userId).emit('newNotification', populatedNotification);
+      console.log('✅ Notification emitted successfully');
+    } else {
+      console.error('❌ Socket.io instance not available');
     }
 
     res.status(201).json({

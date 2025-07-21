@@ -69,7 +69,7 @@ exports.createRequest = async (req, res) => {
           senderId: req.user._id,
           userId: unit.ownerId,
           title: 'طلب صيانة جديد',
-          message: `لديك طلب صيانة جديد من المستأجر: ${title}`,
+          message: `لديك طلب صيانة جديد من المستأجر`,
           type: 'MAINTENANCE_REQUEST',
           maintenanceRequestId: request._id,
           link: `/dashboard/maintenance-requests`
@@ -82,7 +82,10 @@ exports.createRequest = async (req, res) => {
         const io = req.app.get('io');
         if (io) {
           console.log('📡 Emitting newNotification to landlord:', unit.ownerId.toString());
-          io.to(unit.ownerId.toString()).emit('newNotification', notification);
+          // Populate senderId before emitting
+          const populatedNotification = await notification.populate('senderId', 'name avatarUrl');
+          io.to(unit.ownerId.toString()).emit('newNotification', populatedNotification);
+          console.log('✅ Maintenance notification emitted successfully');
         } else {
           console.error('❌ Socket.io instance not available');
         }
@@ -188,7 +191,10 @@ exports.updateRequestStatus = async (req, res) => {
       const io = req.app.get('io');
       if (io) {
         console.log('📡 Emitting newNotification to tenant:', request.tenantId.toString());
-        io.to(request.tenantId.toString()).emit('newNotification', notification);
+        // Populate senderId before emitting
+        const populatedNotification = await notification.populate('senderId', 'name avatarUrl');
+        io.to(request.tenantId.toString()).emit('newNotification', populatedNotification);
+        console.log('✅ Maintenance update notification emitted successfully');
       } else {
         console.error('❌ Socket.io instance not available');
       }
