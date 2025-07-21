@@ -7,19 +7,30 @@ function setupSocket(io) {
     console.log("✅ Socket connected:", socket.id);
 
     socket.on('join', async (userId) => {
-      console.log("📌 User joined:", userId);
-      onlineUsers[userId] = socket.id;
+      try {
+        console.log("📌 User joined:", userId);
+        onlineUsers[userId] = socket.id;
+        
+        // Join a room with userId for targeted notifications
+        socket.join(userId);
+        console.log("🏠 User joined room:", userId);
+        console.log("📊 Total online users:", Object.keys(onlineUsers).length);
 
-      // Fetch unread notifications from DB:
-      const unread = await Notification.find({
-        userId: userId,
-        isRead: false,
-      }).sort({ createdAt: -1 });
+        // Fetch unread notifications from DB:
+        const unread = await Notification.find({
+          userId: userId,
+          isRead: false,
+        }).sort({ createdAt: -1 });
 
-      // Send them via socket:
-      unread.forEach((notif) => {
-        socket.emit("newNotification", notif);
-      });
+        console.log(`📧 Found ${unread.length} unread notifications for user ${userId}`);
+
+        // Send them via socket:
+        unread.forEach((notif) => {
+          socket.emit("newNotification", notif);
+        });
+      } catch (error) {
+        console.error("❌ Error in socket join:", error);
+      }
     });
 
     socket.on('disconnect', () => {
@@ -27,9 +38,14 @@ function setupSocket(io) {
       for (let id in onlineUsers) {
         if (onlineUsers[id] === socket.id) {
           delete onlineUsers[id];
+          console.log(`👤 User ${id} removed from online users`);
           break;
         }
       }
+    });
+
+    socket.on('error', (error) => {
+      console.error("❌ Socket error:", error);
     });
   });
 }
