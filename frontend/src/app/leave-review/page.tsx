@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import { Star, StarIcon } from "lucide-react";
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function LeaveReviewPage() {
   const { user, token } = useAuth();
@@ -96,7 +97,8 @@ export default function LeaveReviewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
+    <ProtectedRoute>
+       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
       <main className="pt-24 px-4">
         <div className="max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -177,5 +179,6 @@ export default function LeaveReviewPage() {
         </div>
       </main>
     </div>
+    </ProtectedRoute>
   );
 }

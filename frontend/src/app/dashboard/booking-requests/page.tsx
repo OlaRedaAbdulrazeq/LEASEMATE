@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 interface BookingRequest {
   _id: string;
@@ -110,8 +111,8 @@ export default function BookingRequestsPage() {
   };
 
   return (
-    
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
+    <ProtectedRoute>
+        <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
       <div className="max-w-4xl mx-auto pt-20 px-4">
         <h1 className="text-3xl font-bold mb-8 text-orange-600 dark:text-orange-400 text-center">طلبات الإيجار الجديدة</h1>
@@ -223,5 +224,7 @@ export default function BookingRequestsPage() {
         )}
       </div>
     </div>
+    </ProtectedRoute>
+    
   );
 } 

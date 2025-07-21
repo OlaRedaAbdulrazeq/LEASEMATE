@@ -14,6 +14,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -97,7 +98,8 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-orange-50 dark:bg-stone-900">
+    <ProtectedRoute>
+         <div className="min-h-screen bg-orange-50 dark:bg-stone-900">
       <Navbar />
       <div className="flex pt-20 items-center justify-center min-h-[calc(100vh-80px)]">{/* Adjust height for navbar */}
         <main className="max-w-2xl w-full p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-xl">
@@ -205,7 +207,7 @@ export default function ProfilePage() {
                           if (actualSentiment === 'ايجابي') {
                             sentimentColor = 'bg-green-100 text-green-700';
                             sentimentIcon = '😊';
-                            sentimentText = 'إيجابي';
+                            sentimentText = 'ايجابي';
                           } else if (actualSentiment === 'سلبي') {
                             sentimentColor = 'bg-red-100 text-red-700';
                             sentimentIcon = '😞';
@@ -248,5 +250,7 @@ export default function ProfilePage() {
         </main>
       </div>
     </div>
+    </ProtectedRoute>
+   
   );
 } 
