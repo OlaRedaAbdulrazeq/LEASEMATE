@@ -38,6 +38,7 @@ export default function MaintenanceRequestsPage() {
   const [success, setSuccess] = useState("");
   const [localDates, setLocalDates] = useState<{ [id: string]: string }>({});
   const [openImage, setOpenImage] = useState<string | null>(null);
+  const [buttonLoading, setButtonLoading] = useState<{ [id: string]: boolean }>({});
 
   // Listen for maintenance request events using the shared socket
   useEffect(() => {
@@ -219,14 +220,21 @@ export default function MaintenanceRequestsPage() {
       <main className="mt-20 pt-4 pb-16 px-4 max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">طلبات الصيانة</h1>
         {user?.role === "tenant" && (
-          <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 mb-8">
-            <div className="mb-4">
-              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">الوحدة</label>
+          <form
+            onSubmit={handleSubmit}
+            className="relative bg-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-3xl p-10 mb-12 border-2 border-orange-200 dark:border-orange-700 max-w-xl mx-auto"
+          >
+            <div className="mb-8">
+              <h2 className="text-3xl font-extrabold text-orange-600 dark:text-orange-400 mb-2 tracking-tight">طلب صيانة جديد</h2>
+              <p className="text-gray-500 dark:text-gray-400 text-base">يرجى تعبئة جميع الحقول المطلوبة بدقة.</p>
+            </div>
+            <div className="mb-7">
+              <label className="block mb-2 text-lg font-semibold text-gray-700 dark:text-gray-300">الوحدة</label>
               <select
                 name="unitId"
                 value={form.unitId}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white"
+                className="w-full px-4 py-2 border border-orange-200 dark:border-orange-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 dark:bg-gray-800 dark:text-white transition-all duration-200 shadow-sm text-lg"
                 required
                 disabled={unitsLoading}
               >
@@ -240,21 +248,46 @@ export default function MaintenanceRequestsPage() {
                 ))}
               </select>
             </div>
-            <div className="mb-4">
-              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">عنوان العطل</label>
-              <input type="text" name="title" value={form.title} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white" required disabled={formLoading} />
+            <div className="mb-7">
+              <label className="block mb-2 text-lg font-semibold text-gray-700 dark:text-gray-300">عنوان العطل</label>
+              <input
+                type="text"
+                name="title"
+                value={form.title}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-orange-200 dark:border-orange-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 dark:bg-gray-800 dark:text-white transition-all duration-200 shadow-sm text-lg"
+                required
+                disabled={formLoading}
+              />
             </div>
-            <div className="mb-4">
-              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">وصف العطل</label>
-              <textarea name="description" value={form.description} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-white" required disabled={formLoading} />
+            <div className="mb-7">
+              <label className="block mb-2 text-lg font-semibold text-gray-700 dark:text-gray-300">وصف العطل</label>
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-orange-200 dark:border-orange-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 dark:bg-gray-800 dark:text-white transition-all duration-200 shadow-sm min-h-[90px] resize-none text-lg"
+                required
+                disabled={formLoading}
+              />
             </div>
-            <div className="mb-4">
-              <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">صورة العطل (اختياري)</label>
-              <input type="file" accept="image/*" onChange={handleFileChange} className="w-full" disabled={formLoading} />
+            <div className="mb-7">
+              <label className="block mb-2 text-lg font-semibold text-gray-700 dark:text-gray-300">صورة العطل (اختياري)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="w-full file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-base file:font-semibold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200 dark:file:bg-gray-800 dark:file:text-orange-200 dark:hover:file:bg-gray-700 transition-all duration-200"
+                disabled={formLoading}
+              />
             </div>
-            {error && <div className="mb-2 text-red-600 text-center">{error}</div>}
-            {success && <div className="mb-2 text-green-600 text-center">{success}</div>}
-            <button type="submit" disabled={formLoading || unitsLoading || units.length === 0} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-semibold text-lg mt-2 disabled:opacity-50">
+            {error && <div className="mb-5 text-red-600 text-center font-bold text-lg animate-shake">{error}</div>}
+            {success && <div className="mb-5 text-green-600 text-center font-bold text-lg animate-fade-in">{success}</div>}
+            <button
+              type="submit"
+              disabled={formLoading || unitsLoading || units.length === 0}
+              className="w-full bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 text-white py-3 rounded-xl font-bold text-xl mt-2 shadow-lg transition-all duration-200 disabled:opacity-50 hover:scale-[1.03]"
+            >
               {formLoading ? "...جاري الإرسال" : "إرسال الطلب"}
             </button>
           </form>
@@ -298,41 +331,51 @@ export default function MaintenanceRequestsPage() {
                     <div className="flex gap-2">
                       {req.status === 'pending' && (
                         <button
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                          disabled={buttonLoading[req._id]}
                           onClick={async () => {
+                            setButtonLoading(prev => ({ ...prev, [req._id]: true }));
+                            setError("");
                             try {
                               await axios.patch(`http://localhost:5000/api/maintenance/${req._id}`,
                                 { status: 'in progress', notes: req._landlordNote || '' },
                                 { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
                               );
-                              // Remove fetchRequests() - let real-time update handle it
+                              // UI will update via socket
                             } catch (error) {
                               console.error('Error updating request:', error);
                               setError('حدث خطأ أثناء تحديث الطلب');
+                            } finally {
+                              setButtonLoading(prev => ({ ...prev, [req._id]: false }));
                             }
                           }}
                         >
-                          قبول الطلب (جاري التنفيذ)
+                          {buttonLoading[req._id] ? '...جاري التنفيذ' : 'قبول الطلب (جاري التنفيذ)'}
                         </button>
                       )}
                       {req.status !== 'resolved' && (
                         <button
-                          className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+                          className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                          disabled={buttonLoading[req._id]}
                           onClick={async () => {
+                            setButtonLoading(prev => ({ ...prev, [req._id]: true }));
+                            setError("");
                             try {
                               console.log('PATCH /api/maintenance/:id', req._id, { status: 'resolved', notes: req._landlordNote || '' });
                               await axios.patch(`http://localhost:5000/api/maintenance/${req._id}`,
                                 { status: 'resolved', notes: req._landlordNote || '' },
                                 { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
                               );
-                              // Remove fetchRequests() - let real-time update handle it
+                              // UI will update via socket
                             } catch (error) {
                               console.error('Error updating request:', error);
                               setError('حدث خطأ أثناء تحديث الطلب');
+                            } finally {
+                              setButtonLoading(prev => ({ ...prev, [req._id]: false }));
                             }
                           }}
                         >
-                          تم الحل
+                          {buttonLoading[req._id] ? '...جاري الحل' : 'تم الحل'}
                         </button>
                       )}
                     </div>
