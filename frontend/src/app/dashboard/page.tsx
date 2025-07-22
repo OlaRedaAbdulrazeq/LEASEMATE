@@ -8,6 +8,8 @@ import Navbar from "@/components/Navbar";
 import { apiService, Unit } from "@/services/api";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -273,15 +275,15 @@ export default function Dashboard() {
                   <div className="mb-6 bg-white/80 dark:bg-gray-800/80 rounded-xl p-6 shadow-lg">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">إختصارات سريعة</h3>
                     <div className="flex flex-row gap-3 justify-center">
-                      <a href="/unit/add" className="flex items-center gap-2 text-center p-3 rounded-lg bg-orange-500 dark:bg-orange-600 text-white font-medium hover:bg-orange-600 dark:hover:bg-orange-700 transition-colors">
+                      <Link href="/unit/add" className="flex items-center gap-2 text-center p-3 rounded-lg bg-orange-500 dark:bg-orange-600 text-white font-medium hover:bg-orange-600 dark:hover:bg-orange-700 transition-colors">
                         <i className="fa fa-plus-circle" aria-hidden="true"></i>
                         إضافة وحدة جديدة
-                      </a>
+                      </Link>
                      
-                      <a href="/dashboard/booking-requests" className="flex items-center gap-2 text-center p-3 rounded-lg bg-blue-500 dark:bg-blue-600 text-white font-medium hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors">
+                      <Link href="/dashboard/booking-requests" className="flex items-center gap-2 text-center p-3 rounded-lg bg-blue-500 dark:bg-blue-600 text-white font-medium hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors">
                         <i className="fa fa-file-alt" aria-hidden="true"></i>
                         مراجعة طلبات الإيجار
-                      </a>
+                      </Link>
             </div>
                   </div>
                   {/* قسم الممتلكات */}
