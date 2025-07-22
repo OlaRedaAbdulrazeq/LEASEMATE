@@ -227,11 +227,11 @@ export default function NotificationsPage() {
                           <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
                             {getNotificationTypeText(notification.type)}
                           </span>
-                          {notification.senderId && (
+                          {/* {notification.senderId && (
                             <span className="text-xs text-gray-500">
                               من: {notification.senderId.name}
                             </span>
-                          )}
+                          )} */}
                         </div>
                       </div>
                     </div>
