@@ -7,7 +7,6 @@ import UnitForm from "@/components/UnitForm";
 import AmenitiesForm from "../../../components/AmentiesForm";
 import { apiService } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
-import ProtectedRoute from "@/components/ProtectedRoute";
 import Navbar from "@/components/Navbar";
 
 interface UnitData {
@@ -84,6 +83,55 @@ export default function AddUnitPage() {
           <p className="text-lg text-gray-600 dark:text-gray-200 font-cairo">
             هذه الصفحة متاحة فقط لأصحاب العقارات
           </p>
+        </div>
+      </main>
+    );
+  }
+
+  // Check if landlord is verified
+  if (
+    user &&
+    user.role === "landlord" &&
+    user.verificationStatus?.status !== "approved"
+  ) {
+    return (
+      <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+        <Navbar />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-20">
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-2xl p-8 mb-8">
+            <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-8 h-8 text-yellow-600 dark:text-yellow-400"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-bold text-yellow-800 dark:text-yellow-200 mb-4 font-cairo">
+              في انتظار التوثيق
+            </h1>
+            <p className="text-lg text-yellow-700 dark:text-yellow-300 mb-6 font-cairo">
+              يجب أن تكون مالك عقار موثق لإضافة وحدات جديدة. يرجى إكمال عملية
+              التوثيق أولاً.
+            </p>
+            <div className="text-sm text-yellow-600 dark:text-yellow-400 font-cairo">
+              <p>
+                حالة التوثيق الحالية:{" "}
+                <span className="font-semibold">
+                  {user.verificationStatus?.status === "pending"
+                    ? "قيد المراجعة"
+                    : user.verificationStatus?.status === "rejected"
+                    ? "مرفوض"
+                    : "غير مكتمل"}
+                </span>
+              </p>
+            </div>
+          </div>
         </div>
       </main>
     );
@@ -250,7 +298,23 @@ export default function AddUnitPage() {
       }, 2000);
     } catch (error) {
       console.error("Error saving unit:", error);
-      if (error instanceof Error) {
+
+      if (
+        error instanceof Error &&
+        error.message.includes("Access denied. Only verified landlords")
+      ) {
+        toast.error("يجب أن تكون مالك عقار موثق لإضافة وحدات جديدة", {
+          duration: 4000,
+          position: "top-center",
+          style: {
+            background: "#EF4444",
+            color: "#fff",
+            fontWeight: "bold",
+            padding: "16px",
+            borderRadius: "8px",
+          },
+        });
+      } else if (error instanceof Error) {
         toast.error(`حدث خطأ أثناء حفظ بيانات الوحدة: ${error.message}`, {
           duration: 4000,
           position: "top-center",
@@ -284,9 +348,9 @@ export default function AddUnitPage() {
   };
 
   return (
-      <main className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 py-8 text-gray-900 dark:text-white pt-14">
-        <Navbar/>
-        <Toaster />
+    <main className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 py-8 text-gray-900 dark:text-white pt-14">
+      <Navbar />
+      <Toaster />
       <div className="max-w-4xl pt-20 mx-auto px-4 sm:px-6 lg:px-8">
         <header className="mb-10 text-center">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4 font-cairo">
@@ -324,5 +388,5 @@ export default function AddUnitPage() {
     </main>
   );
 }
-//TODO:check if unverified users can add units
 //TODO:fix image extension and video stuff
+//TODO:fix negative price
