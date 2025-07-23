@@ -160,6 +160,13 @@ export default function UnitsPage() {
 
         if (filters.governorate) apiParams.governorate = filters.governorate;
 
+        // Add furnishing filter from dropdown
+        if (filters.furnishing === "true") {
+          apiParams.isFurnished = true;
+        } else if (filters.furnishing === "false") {
+          apiParams.isFurnished = false;
+        }
+
         // Add verified filter
         if (filters.verified) apiParams.verified = "true";
 
@@ -172,8 +179,6 @@ export default function UnitsPage() {
         if (filters.amenities.includes("hasHeating"))
           apiParams.hasHeating = true;
         if (filters.amenities.includes("hasPool")) apiParams.hasPool = true;
-        if (filters.amenities.includes("isFurnished"))
-          apiParams.isFurnished = true;
 
         // Add location parameters if user location is available (no search restriction needed anymore)
         if (userLocation) {
@@ -203,6 +208,7 @@ export default function UnitsPage() {
     currentPage,
     filters.price,
     filters.type,
+    filters.furnishing,
     filters.governorate,
     filters.verified,
     filters.amenities,

@@ -279,7 +279,9 @@ class ApiService {
         searchParams.append("governorate", params.governorate);
 
       // Amenity filters
-      if (params.isFurnished) searchParams.append("isFurnished", "true");
+      if (params.isFurnished !== undefined) {
+        searchParams.append("isFurnished", params.isFurnished.toString());
+      }
       if (params.hasAC) searchParams.append("hasAC", "true");
       if (params.hasWifi) searchParams.append("hasWifi", "true");
       if (params.hasTV) searchParams.append("hasTV", "true");

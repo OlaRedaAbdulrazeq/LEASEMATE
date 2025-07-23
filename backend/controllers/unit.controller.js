@@ -72,7 +72,13 @@ const getAllUnits = asyncWrapper(async (req, res) => {
   if (hasKitchenware === "true") filter.hasKitchenware = true;
   if (hasHeating === "true") filter.hasHeating = true;
   if (hasPool === "true") filter.hasPool = true;
-  if (isFurnished === "true") filter.isFurnished = true;
+
+  // Handle furnished filter
+  if (isFurnished === "true" || isFurnished === true) {
+    filter.isFurnished = true;
+  } else if (isFurnished === "false" || isFurnished === false) {
+    filter.isFurnished = false;
+  }
 
   // Calculate pagination
   const skip = (page - 1) * limit;

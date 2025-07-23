@@ -23,7 +23,6 @@ const amenityOptions = [
   { value: "hasKitchenware", label: "أدوات مطبخ" },
   { value: "hasHeating", label: "تدفئة" },
   { value: "hasPool", label: "مسبح" },
-  { value: "isFurnished", label: "مفروش" },
 ];
 
 const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
