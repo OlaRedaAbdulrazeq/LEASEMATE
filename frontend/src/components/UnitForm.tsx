@@ -1,3 +1,6 @@
+import React from "react";
+import toast from "react-hot-toast";
+
 interface UnitData {
   name: string;
   type: string;
@@ -38,7 +41,53 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    handleInputChange("images", [...data.images, ...files]);
+    const currentImages = data.images.length;
+    const maxImages = 5;
+
+    // Validate file types
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const invalidFiles = files.filter(
+      (file) => !allowedTypes.includes(file.type)
+    );
+
+    if (invalidFiles.length > 0) {
+      // Show error for invalid file types
+      const invalidFileNames = invalidFiles.map((f) => f.name).join(", ");
+      toast.error(
+        `الملفات التالية غير مدعومة: ${invalidFileNames}\nيُسمح فقط بملفات الصور (JPEG, JPG, PNG, WebP)`,
+        {
+          duration: 4000,
+          position: "top-center",
+          style: {
+            background: "#EF4444",
+            color: "#fff",
+            fontWeight: "bold",
+            padding: "16px",
+            borderRadius: "8px",
+          },
+        }
+      );
+      e.target.value = ""; // Reset input
+      return;
+    }
+
+    // Filter out invalid files and keep only valid ones
+    const validFiles = files.filter((file) => allowedTypes.includes(file.type));
+
+    // Check if adding new files would exceed the limit
+    if (currentImages + validFiles.length > maxImages) {
+      const allowedFiles = maxImages - currentImages;
+      if (allowedFiles > 0) {
+        // Take only first 5 files
+        const limitedFiles = validFiles.slice(0, allowedFiles);
+        handleInputChange("images", [...data.images, ...limitedFiles]);
+      }
+    } else {
+      handleInputChange("images", [...data.images, ...validFiles]);
+    }
+
+    // Reset the input value to allow selecting the same files again
+    e.target.value = "";
   };
 
   const removeImage = (index: number) => {
@@ -66,33 +115,58 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
       <div className="mb-8">
         <label className="block text-sm font-bold text-gray-700 font-cairo mb-3">
           صور الوحدة <span className="text-red-500">*</span>
+          <span className="text-gray-500 font-normal">(5 صور كحد أقصى)</span>
         </label>
         <div
-          className={`border-2 border-dashed rounded-xl p-6 hover:border-orange-400 transition-colors ${
-            errors.images ? "border-red-500 bg-red-50" : "border-gray-300"
+          className={`border-2 border-dashed rounded-xl p-6 transition-colors ${
+            data.images.length >= 5
+              ? "border-gray-200 bg-gray-50"
+              : errors.images
+              ? "border-red-500 bg-red-50"
+              : "border-gray-300 hover:border-orange-400"
           }`}
         >
           <input
             type="file"
             multiple
-            accept="image/*"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
             onChange={handleImageUpload}
             className="hidden"
             id="image-upload"
+            disabled={data.images.length >= 5}
             suppressHydrationWarning
           />
           <label
             htmlFor="image-upload"
-            className="cursor-pointer flex flex-col items-center space-y-2"
+            className={`${
+              data.images.length >= 5 ? "cursor-not-allowed" : "cursor-pointer"
+            } flex flex-col items-center space-y-2`}
           >
-            <div className="text-4xl text-gray-400">📸</div>
+            <div
+              className={`text-4xl ${
+                data.images.length >= 5 ? "text-gray-300" : "text-gray-400"
+              }`}
+            >
+              {data.images.length >= 5 ? "✅" : "📸"}
+            </div>
             <div className="text-center">
-              <p className="text-gray-600 font-cairo font-medium">
-                اضغط لرفع الصور
+              <p
+                className={`font-cairo font-medium ${
+                  data.images.length >= 5 ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                {data.images.length >= 5
+                  ? "تم الوصول للحد الأقصى"
+                  : "اضغط لرفع الصور"}
               </p>
               <p className="text-gray-400 text-sm font-cairo">
-                PNG, JPG أو JPEG
+                PNG, JPG, JPEG أو WebP
               </p>
+              {data.images.length > 0 && (
+                <p className="text-orange-600 text-sm font-cairo font-medium">
+                  تم رفع {data.images.length} من 5 صور
+                </p>
+              )}
             </div>
           </label>
         </div>
@@ -190,7 +264,7 @@ export default function UnitForm({ data, onChange, errors }: UnitFormProps) {
           rows={4}
           value={data.description}
           onChange={(e) => handleInputChange("description", e.target.value)}
-            suppressHydrationWarning
+          suppressHydrationWarning
         />
         <ErrorMessage error={errors.description} />
       </div>

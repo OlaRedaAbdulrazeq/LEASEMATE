@@ -179,7 +179,7 @@ export default function AddUnitPage() {
       newErrors.postalCode = "الرقم البريدي غير صحيح";
     }
 
-    // Image validation (temporarily disabled for testing)
+    // Image validation
     if (unitData.images.length === 0) {
       newErrors.images = "يجب رفع صورة واحدة على الأقل للوحدة";
     }
@@ -314,6 +314,24 @@ export default function AddUnitPage() {
             borderRadius: "8px",
           },
         });
+      } else if (
+        error instanceof Error &&
+        (error.message.includes(
+          "Only JPEG, JPG, PNG, and WebP image files are allowed"
+        ) ||
+          error.message.includes("Only image files are allowed"))
+      ) {
+        toast.error("يُسمح فقط برفع ملفات الصور (JPEG, JPG, PNG, WebP)", {
+          duration: 4000,
+          position: "top-center",
+          style: {
+            background: "#EF4444",
+            color: "#fff",
+            fontWeight: "bold",
+            padding: "16px",
+            borderRadius: "8px",
+          },
+        });
       } else if (error instanceof Error) {
         toast.error(`حدث خطأ أثناء حفظ بيانات الوحدة: ${error.message}`, {
           duration: 4000,
@@ -388,5 +406,3 @@ export default function AddUnitPage() {
     </main>
   );
 }
-//TODO:fix image extension and video stuff
-//TODO:fix negative price
