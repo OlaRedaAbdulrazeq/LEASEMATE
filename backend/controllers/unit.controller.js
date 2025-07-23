@@ -19,6 +19,7 @@ const getAllUnits = asyncWrapper(async (req, res) => {
     lng,
     radius = 50,
     verified,
+    governorate,
     hasAC,
     hasWifi,
     hasTV,
@@ -52,6 +53,10 @@ const getAllUnits = asyncWrapper(async (req, res) => {
 
   if (type) {
     filter.type = type;
+  }
+
+  if (governorate && governorate.trim()) {
+    filter.governorate = governorate.trim();
   }
 
   if (minPrice || maxPrice) {
@@ -325,7 +330,9 @@ const deleteUnitImage = asyncWrapper(async (req, res, next) => {
 
 const getMyUnits = asyncWrapper(async (req, res, next) => {
   if (!req.user || !req.user._id) {
-    return next(appError.create("Unauthorized: user not found", 401, httpStatusText.FAIL));
+    return next(
+      appError.create("Unauthorized: user not found", 401, httpStatusText.FAIL)
+    );
   }
   const userId = req.user._id;
   const units = await Unit.find({ ownerId: userId })

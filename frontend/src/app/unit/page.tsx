@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import FilterSidebar, { FilterValues } from "../../components/FilterSidebar";
-import SearchBar from "../../components/SearchBar";
 import UnitCard from "../../components/UnitCard";
 import PaginationControls from "../../components/PaginationControls";
 import Navbar from "../../components/Navbar";
@@ -39,14 +38,14 @@ export default function UnitsPage() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [isLocationInitialized, setIsLocationInitialized] = useState(false);
 
-  // Controlled state for search and filters
-  const [search, setSearch] = useState(params.get("search") || "");
+  // Controlled state for filters
   const [filters, setFilters] = useState({
     price: params.get("price") || "",
     type: params.get("type") || "",
     furnishing: params.get("furnishing") || "",
     amenities: params.getAll("amenities"),
     verified: params.get("verified") === "true",
+    governorate: params.get("governorate") || "",
   });
 
   const currentPage = Number(params.get("page")) || 1;
@@ -138,6 +137,7 @@ export default function UnitsPage() {
           lng?: number;
           radius?: number;
           verified?: string;
+          governorate?: string;
           hasAC?: boolean;
           hasWifi?: boolean;
           hasTV?: boolean;
@@ -150,8 +150,6 @@ export default function UnitsPage() {
           limit: 9, // Show 9 units per page to match the 3x3 grid
         };
 
-        if (search) apiParams.search = search;
-
         // Map filters to API parameters
         if (filters.price) {
           // Use the price as a maximum price filter
@@ -159,6 +157,8 @@ export default function UnitsPage() {
         }
 
         if (filters.type) apiParams.type = filters.type;
+
+        if (filters.governorate) apiParams.governorate = filters.governorate;
 
         // Add verified filter
         if (filters.verified) apiParams.verified = "true";
@@ -175,8 +175,8 @@ export default function UnitsPage() {
         if (filters.amenities.includes("isFurnished"))
           apiParams.isFurnished = true;
 
-        // Add location parameters if user location is available AND no search term
-        if (userLocation && !search) {
+        // Add location parameters if user location is available (no search restriction needed anymore)
+        if (userLocation) {
           apiParams.lat = userLocation.lat;
           apiParams.lng = userLocation.lng;
           apiParams.radius = 10000; // 10km radius in meters
@@ -201,16 +201,15 @@ export default function UnitsPage() {
     fetchData();
   }, [
     currentPage,
-    search,
     filters.price,
     filters.type,
+    filters.governorate,
     filters.verified,
     filters.amenities,
     userLocation,
     isLocationInitialized,
   ]);
 
-  // Update query params helper
   const updateQuery = (
     newParams: Record<string, string | number | boolean | string[] | undefined>
   ) => {
@@ -233,12 +232,6 @@ export default function UnitsPage() {
   };
 
   // Handlers
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSearch = e.target.value;
-    setSearch(newSearch);
-    updateQuery({ search: newSearch, page: 1 });
-  };
-
   const handleFilterSubmit = (newFilters: FilterValues) => {
     setFilters(newFilters);
     updateQuery({ ...newFilters, page: 1 });
@@ -257,73 +250,66 @@ export default function UnitsPage() {
             <FilterSidebar values={filters} onSubmit={handleFilterSubmit} />
           </aside>
           <section className="col-span-12 md:col-span-9 p-4 md:p-8">
-            {/* Location Status - only show when not searching */}
-            {!search && (
-              <div className="mb-4 p-3 rounded-lg bg-white shadow-sm border">
-                {locationLoading && (
-                  <div className="flex items-center text-amber-600">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600 mr-2"></div>
-                    جاري تحديد موقعك...
-                  </div>
-                )}
-                {userLocation && !locationLoading && (
-                  <div className="flex items-center text-green-600">
-                    <svg
-                      className="w-4 h-4 mr-2"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    يتم عرض الوحدات القريبة أولاً، ثم باقي الوحدات
-                  </div>
-                )}
-                {locationError && !locationLoading && (
-                  <div className="flex items-center text-amber-600">
-                    <svg
-                      className="w-4 h-4 mr-2"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    لم يتم تحديد الموقع - يتم عرض جميع الوحدات
-                    <button
-                      onClick={() => {
-                        // Clear saved location and try again
-                        sessionStorage.removeItem("userLocation");
-                        setUserLocation(null);
-                        setIsLocationInitialized(false);
-                        getUserLocation();
-                      }}
-                      className="mr-2 text-blue-600 hover:text-blue-800 underline"
-                    >
-                      إعادة المحاولة
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="mb-6">
-              <SearchBar value={search} onChange={handleSearchChange} />
+            {/* Location Status */}
+            <div className="mb-4 p-3 rounded-lg bg-white shadow-sm border">
+              {locationLoading && (
+                <div className="flex items-center text-amber-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600 mr-2"></div>
+                  جاري تحديد موقعك...
+                </div>
+              )}
+              {userLocation && !locationLoading && (
+                <div className="flex items-center text-green-600">
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  يتم عرض الوحدات القريبة أولاً، ثم باقي الوحدات
+                </div>
+              )}
+              {locationError && !locationLoading && (
+                <div className="flex items-center text-amber-600">
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  لم يتم تحديد الموقع - يتم عرض جميع الوحدات
+                  <button
+                    onClick={() => {
+                      // Clear saved location and try again
+                      sessionStorage.removeItem("userLocation");
+                      setUserLocation(null);
+                      setIsLocationInitialized(false);
+                      getUserLocation();
+                    }}
+                    className="mr-2 text-blue-600 hover:text-blue-800 underline"
+                  >
+                    إعادة المحاولة
+                  </button>
+                </div>
+              )}
             </div>
+
             <h2
               className="text-[var(--dark-brown)] text-3xl font-bold leading-tight tracking-tight mb-6 text-right"
               data-units-header
             >
               {loading
                 ? "جاري التحميل..."
-                : search
-                ? `نتائج البحث: ${formatUnitCount(totalAvailableUnits)}`
                 : totalAvailableUnits === 0
                 ? formatUnitCount(totalAvailableUnits)
                 : `عرض ${formatUnitCount(totalAvailableUnits)}`}

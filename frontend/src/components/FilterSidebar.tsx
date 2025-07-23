@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { egyptianGovernorates } from "../data/governorates";
 
 export type FilterValues = {
   price: string;
@@ -7,6 +8,7 @@ export type FilterValues = {
   furnishing: string;
   amenities: string[];
   verified: boolean;
+  governorate: string;
 };
 
 interface FilterSidebarProps {
@@ -118,6 +120,27 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({ values, onSubmit }) => {
           <option value="">أي</option>
           <option value="apartment">شقة</option>
           <option value="villa">فيلا</option>
+        </select>
+      </div>
+      <div>
+        <label
+          className="text-[var(--dark-brown)] text-base font-medium"
+          htmlFor="governorate"
+        >
+          المحافظة
+        </label>
+        <select
+          className="form-select mt-2 w-full rounded-lg text-[var(--dark-brown)] dark:text-white border border-[var(--light-gray)] bg-[var(--eggshell)] dark:bg-gray-800 h-12 px-4 text-base font-normal"
+          id="governorate"
+          name="governorate"
+          value={local.governorate}
+          onChange={handleChange}
+        >
+          {egyptianGovernorates.map((gov) => (
+            <option key={gov.value} value={gov.value}>
+              {gov.label}
+            </option>
+          ))}
         </select>
       </div>
       <div>

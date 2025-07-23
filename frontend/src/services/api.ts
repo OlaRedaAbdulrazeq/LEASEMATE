@@ -111,24 +111,29 @@ class ApiService {
       url,
       method: config.method,
       body: config.body,
-      headers: config.headers
+      headers: config.headers,
     });
 
     try {
       const response = await fetch(url, config);
 
       console.log("Response status:", response.status);
-      console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+      console.log(
+        "Response headers:",
+        Object.fromEntries(response.headers.entries())
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error("API Error Response:", {
           status: response.status,
           statusText: response.statusText,
-          errorData
+          errorData,
         });
         throw new Error(
-          errorData.message || errorData.error || `HTTP error! status: ${response.status}`
+          errorData.message ||
+            errorData.error ||
+            `HTTP error! status: ${response.status}`
         );
       }
 
@@ -202,7 +207,7 @@ class ApiService {
       throw error;
     }
   }
-  
+
   async getReviewsForUser(userId: string) {
     return this.request(`/reviews/${userId}`);
   }
@@ -243,6 +248,7 @@ class ApiService {
       lng?: number;
       radius?: number;
       verified?: string;
+      governorate?: string;
       isFurnished?: boolean;
       hasAC?: boolean;
       hasWifi?: boolean;
@@ -269,6 +275,8 @@ class ApiService {
       if (params.radius)
         searchParams.append("radius", params.radius.toString());
       if (params.verified) searchParams.append("verified", params.verified);
+      if (params.governorate)
+        searchParams.append("governorate", params.governorate);
 
       // Amenity filters
       if (params.isFurnished) searchParams.append("isFurnished", "true");
@@ -343,7 +351,9 @@ class ApiService {
     }
   }
 
-  async getMyUnits(token: string): Promise<{ status: string; data: { units: Unit[] } }> {
+  async getMyUnits(
+    token: string
+  ): Promise<{ status: string; data: { units: Unit[] } }> {
     return this.request("/units/my-units", {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -354,15 +364,15 @@ class ApiService {
   async sendBookingRequest(unitId: string, message: string = "") {
     const token = localStorage.getItem("leasemate_token");
     if (!token) throw new Error("يجب تسجيل الدخول أولاً");
-    
+
     const requestData = { unitId, message };
-    
+
     console.log("=== FRONTEND BOOKING REQUEST DEBUG ===");
     console.log("Token exists:", !!token);
     console.log("Request data:", requestData);
     console.log("JSON stringified:", JSON.stringify(requestData));
     console.log("=====================================");
-    
+
     return this.request("/booking/request", {
       method: "POST",
       headers: {
@@ -376,12 +386,12 @@ class ApiService {
   async getLandlordBookingRequests() {
     const token = localStorage.getItem("leasemate_token");
     if (!token) throw new Error("يجب تسجيل الدخول أولاً");
-    
+
     console.log("=== GET LANDLORD BOOKING REQUESTS DEBUG ===");
     console.log("Token exists:", !!token);
     console.log("Token preview:", token.substring(0, 20) + "...");
     console.log("===========================================");
-    
+
     return this.request("/booking/landlord-requests", {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -389,21 +399,24 @@ class ApiService {
     });
   }
 
-  async createLeaseForBooking(bookingId: string, leaseData: {
-    rentAmount: number;
-    depositAmount: number;
-    startDate: string;
-    endDate: string;
-    paymentTerms: string;
-  }) {
+  async createLeaseForBooking(
+    bookingId: string,
+    leaseData: {
+      rentAmount: number;
+      depositAmount: number;
+      startDate: string;
+      endDate: string;
+      paymentTerms: string;
+    }
+  ) {
     const token = localStorage.getItem("leasemate_token");
     if (!token) throw new Error("يجب تسجيل الدخول أولاً");
-    
+
     console.log("=== CREATE LEASE FOR BOOKING DEBUG ===");
     console.log("BookingId:", bookingId);
     console.log("Lease data:", leaseData);
     console.log("=====================================");
-    
+
     return this.request(`/leases/create/${bookingId}`, {
       method: "POST",
       headers: {
@@ -425,10 +438,10 @@ class ApiService {
   async downloadLeasePDF(leaseId: string) {
     const url = `${API_BASE_URL}/leases/${leaseId}/pdf`;
     const token = localStorage.getItem("leasemate_token");
-    
-    console.log('Downloading PDF for lease:', leaseId);
-    console.log('Token exists:', !!token);
-    
+
+    console.log("Downloading PDF for lease:", leaseId);
+    console.log("Token exists:", !!token);
+
     try {
       const response = await fetch(url, {
         method: "GET",
@@ -438,44 +451,44 @@ class ApiService {
         credentials: "include",
       });
 
-      console.log('Response status:', response.status);
-      console.log('Content-Type:', response.headers.get('content-type'));
+      console.log("Response status:", response.status);
+      console.log("Content-Type:", response.headers.get("content-type"));
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('PDF download error response:', errorData);
+        console.error("PDF download error response:", errorData);
         throw new Error(
           errorData.message || `HTTP error! status: ${response.status}`
         );
       }
 
       // التحقق من نوع المحتوى
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/pdf')) {
-        console.error('Invalid content type:', contentType);
-        throw new Error('الملف المستلم ليس PDF صالح');
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/pdf")) {
+        console.error("Invalid content type:", contentType);
+        throw new Error("الملف المستلم ليس PDF صالح");
       }
 
       // Get the PDF blob
       const blob = await response.blob();
-      console.log('PDF blob size:', blob.size, 'bytes');
-      
+      console.log("PDF blob size:", blob.size, "bytes");
+
       if (blob.size === 0) {
-        throw new Error('الملف فارغ');
+        throw new Error("الملف فارغ");
       }
 
       // Create download link
       const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = downloadUrl;
       link.download = `lease_${leaseId}.pdf`;
-      link.style.display = 'none';
+      link.style.display = "none";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
 
-      console.log('PDF downloaded successfully');
+      console.log("PDF downloaded successfully");
       return { success: true };
     } catch (error) {
       console.error("PDF download error:", error);
