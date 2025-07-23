@@ -29,20 +29,24 @@ const unitSchema = new mongoose.Schema({
 
   pricePerMonth: {
     type: Number,
+    min: [1, "Price per month must be greater than 0"],
     // required: true,
   },
 
   securityDeposit: {
     type: Number,
+    min: [1, "Security deposit must be greater than 0"],
     // required: true,
   },
 
   numRooms: {
     type: Number,
+    min: [1, "Number of rooms must be at least 1"],
     // required: true,
   },
   space: {
     type: Number,
+    min: [1, "Space must be greater than 0"],
     // required: true,
   },
   isFurnished: {
@@ -75,6 +79,7 @@ const unitSchema = new mongoose.Schema({
   },
   postalCode: {
     type: Number,
+    min: [1, "Postal code must be a positive number"],
   },
 
   hasPool: {
@@ -117,7 +122,6 @@ const unitSchema = new mongoose.Schema({
   },
 });
 
-// geospatial index for location-based queries
 unitSchema.index({ location: "2dsphere" });
 
 module.exports = mongoose.model("Units", unitSchema);
