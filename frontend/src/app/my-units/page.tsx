@@ -67,7 +67,7 @@ export default function MyUnitsPage() {
                   <h2 className="text-lg font-bold mb-2 truncate">{unit.name}</h2>
                   <div className="text-sm text-gray-600 dark:text-gray-300 mb-1 truncate">{unit.address}</div>
                   <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">{unit.pricePerMonth} جنيه/شهر</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">{unit.status === 'available' ? 'نشط' : unit.status === 'booked' ? 'محجوز' : 'تحت الصيانة'}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">{unit.status === 'available' ? 'نشط' : unit.status === 'booked' ? 'محجوز' : unit.status === 'pending' ? 'قيد المراجعة' : 'تحت الصيانة'}</div>
                   <button
                     className="mt-auto bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition-colors duration-200 w-full"
                     onClick={() => router.push(`/unit/${unit._id}/manage`)}
