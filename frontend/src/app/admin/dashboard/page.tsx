@@ -13,6 +13,7 @@ import {
   Legend,
 } from 'chart.js';
 ChartJS.register(ArcElement, Tooltip, Legend);
+import Image from 'next/image';
 
 interface User {
   _id: string;
@@ -26,6 +27,15 @@ interface User {
     selfieUrl?: string;
   };
   createdAt: string;
+}
+
+interface AbusiveUser {
+  _id: string;
+  name: string;
+  phone?: string;
+  role: 'landlord' | 'tenant';
+  abusiveCommentsCount: number;
+  isBlocked?: boolean;
 }
 
 export default function AdminDashboard() {
@@ -42,7 +52,22 @@ export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const usersPerPage = 6; // Number of users per page
  
-  const [activeTab, setActiveTab] = useState<'table' | 'dashboard'>('table');
+  const [activeTab, setActiveTab] = useState<'table' | 'dashboard' | 'images'>('table');
+
+  // State for pending images (now pending units)
+  const [pendingUnits, setPendingUnits] = useState<any[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
+  const [imageActionLoading, setImageActionLoading] = useState<string | null>(null);
+  // State for unit review modal
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [pendingRejectUnit, setPendingRejectUnit] = useState<any>(null);
+  // State for image preview modal
+  const [selectedImage, setSelectedImage] = useState<null | { url: string; unitName: string; ownerName?: string }>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [abusiveUsers, setAbusiveUsers] = useState<AbusiveUser[]>([]);
+  const [loadingAbusive, setLoadingAbusive] = useState(false);
+  const [blockLoadingId, setBlockLoadingId] = useState<string | null>(null);
 
   // Check admin access
   useEffect(() => {
@@ -60,6 +85,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (token && user?.role === 'admin') {
       fetchUsers();
+      fetchAbusiveUsers();
     }
   }, [token, user]);
 
@@ -82,6 +108,143 @@ export default function AdminDashboard() {
       fetchUsers(); // Refresh the list
     } catch (error) {
       console.error('Error updating verification status:', error);
+    }
+  };
+
+  // Fetch pending images for admin
+  const fetchPendingImages = async () => {
+    if (!token) return;
+    setLoadingImages(true);
+    try {
+      const res = await apiService.getPendingUnitImages(token);
+      setPendingUnits(res.data.pendingImages || []);
+    } catch (err) {
+      setPendingUnits([]);
+    } finally {
+      setLoadingImages(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'images' && token && user?.role === 'admin') {
+      fetchPendingImages();
+    }
+  }, [activeTab, token, user]);
+
+  const handleImageReview = async (unitId: string, imageUrl: string, action: 'approve' | 'reject') => {
+    if (!token) return;
+    setImageActionLoading(unitId + imageUrl + action);
+    try {
+      await apiService.reviewUnitImage({ unitId, imageUrl, action, token });
+      // Remove image from list after action
+      setPendingUnits((prev) => prev.filter(unit => unit.unitId !== unitId));
+    } catch (err) {
+      // handle error
+    } finally {
+      setImageActionLoading(null);
+    }
+  };
+
+  // Approve unit handler
+  const handleApproveUnit = async (unitId: string) => {
+    if (!token) return;
+    setImageActionLoading(unitId + 'approve');
+    try {
+      await apiService.approveUnit({ unitId, token });
+      setPendingUnits((prev) => prev.filter(unit => unit.unitId !== unitId));
+    } catch (err) {
+      // handle error
+    } finally {
+      setImageActionLoading(null);
+    }
+  };
+
+  // Approve all images for a unit
+  const handleApproveAll = async (unitId: string) => {
+    if (!token) return;
+    setImageActionLoading(unitId + 'approveAll');
+    try {
+      await apiService.approveAllUnitImages({ unitId, token });
+      setPendingUnits((prev) => prev.filter(unit => unit.unitId !== unitId));
+    } catch (err) {
+      // handle error
+    } finally {
+      setImageActionLoading(null);
+    }
+  };
+
+  // Reject unit handler (open modal)
+  const handleRejectUnitClick = (unit: any) => {
+    setPendingRejectUnit(unit);
+    setRejectReason('');
+    setShowRejectModal(true);
+  };
+
+  // Reject all images for a unit (open modal)
+  const handleRejectAllClick = (unit: any) => {
+    setPendingRejectUnit(unit);
+    setRejectReason('');
+    setShowRejectModal(true);
+  };
+
+  // Confirm reject unit
+  const handleRejectUnitConfirm = async () => {
+    if (!token || !pendingRejectUnit) return;
+    setImageActionLoading(pendingRejectUnit.unitId + 'reject');
+    try {
+      await apiService.rejectUnit({ unitId: pendingRejectUnit.unitId, reason: rejectReason, token });
+      setPendingUnits((prev) => prev.filter(unit => unit.unitId !== pendingRejectUnit.unitId));
+      setShowRejectModal(false);
+      setPendingRejectUnit(null);
+      setRejectReason('');
+    } catch (err) {
+      // handle error
+    } finally {
+      setImageActionLoading(null);
+    }
+  };
+
+  // Confirm reject all images
+  const handleRejectAllConfirm = async () => {
+    if (!token || !pendingRejectUnit) return;
+    setImageActionLoading(pendingRejectUnit.unitId + 'rejectAll');
+    try {
+      await apiService.rejectAllUnitImages({ unitId: pendingRejectUnit.unitId, reason: rejectReason, token });
+      setPendingUnits((prev) => prev.filter(unit => unit.unitId !== pendingRejectUnit.unitId));
+      setShowRejectModal(false);
+      setPendingRejectUnit(null);
+      setRejectReason('');
+    } catch (err) {
+      // handle error
+    } finally {
+      setImageActionLoading(null);
+    }
+  };
+
+  const fetchAbusiveUsers = async () => {
+    if (!token) return;
+    setLoadingAbusive(true);
+    try {
+      const res = await apiService.getAbusiveUsers(token);
+      setAbusiveUsers(res.users || []);
+    } catch (err) {
+      setAbusiveUsers([]);
+    } finally {
+      setLoadingAbusive(false);
+    }
+  };
+
+  const handleBlockUser = async (userId: string) => {
+    if (!token) return;
+    setBlockLoadingId(userId);
+    try {
+      await apiService.blockUser(userId, token);
+      fetchAbusiveUsers();
+      fetchUsers();
+    } catch (err) {
+      // handle error
+    } finally {
+      setBlockLoadingId(null);
     }
   };
 
@@ -203,6 +366,15 @@ export default function AdminDashboard() {
               </svg>
               <p className="text-sm font-medium">جدول المستخدمين</p>
             </button>
+            <button
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${activeTab === 'images' ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-600 hover:bg-stone-100'}`}
+              onClick={() => setActiveTab('images')}
+            >
+              <svg className="text-orange-500" fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
+                <path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2Zm-2 0H5V5h14ZM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5Z" />
+              </svg>
+              <p className="text-sm font-semibold">مراجعة صور الشقق</p>
+            </button>
           
           </nav>
           
@@ -249,6 +421,145 @@ export default function AdminDashboard() {
                   <h2 className="text-xl font-semibold mb-4 text-gray-900">توزيع حالة التأكيد</h2>
                   <Pie data={pieData} />
                 </div>
+              </div>
+            ) : activeTab === 'images' ? (
+              <div>
+                <h1 className="text-2xl font-bold mb-6 text-gray-900">صور الشقق قيد المراجعة</h1>
+                {loadingImages ? (
+                  <div className="text-center py-12 text-lg text-gray-600">جاري التحميل...</div>
+                ) : pendingUnits.length === 0 ? (
+                  <div className="text-center py-12 text-lg text-gray-600">لا توجد صور قيد المراجعة حالياً</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-right">
+                      <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3">الصور</th>
+                          <th className="px-4 py-3">اسم الوحدة</th>
+                          <th className="px-4 py-3">المالك</th>
+                          <th className="px-4 py-3">الإجراءات</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingUnits.map((unit) => (
+                          <tr key={unit.unitId} className="border-b border-gray-200">
+                            <td className="py-2 px-4">
+                              <div className="flex gap-2 flex-wrap">
+                                {unit.images.map((img: any, idx: number) => (
+                                  <img
+                                    key={idx}
+                                    src={img.url}
+                                    alt="صورة"
+                                    className="w-24 h-20 object-cover rounded border cursor-pointer hover:scale-105 transition-transform"
+                                    onClick={() => {
+                                      setSelectedImage({ url: img.url, unitName: unit.unitName, ownerName: unit.owner?.name });
+                                      setShowImageModal(true);
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </td>
+                            <td className="py-2 px-4 font-semibold">{unit.unitName}</td>
+                            <td className="py-2 px-4">{unit.owner?.name || '-'}</td>
+                            <td className="py-2 px-4">
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
+                                  disabled={imageActionLoading === unit.unitId + 'approveAll'}
+                                  onClick={() => handleApproveAll(unit.unitId)}
+                                >
+                                  {imageActionLoading === unit.unitId + 'approveAll' ? '...' : 'موافقة على كل الصور'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
+                                  disabled={imageActionLoading === unit.unitId + 'rejectAll'}
+                                  onClick={() => handleRejectAllClick(unit)}
+                                >
+                                  {imageActionLoading === unit.unitId + 'rejectAll' ? '...' : 'رفض كل الصور'}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+               {/* مودال سبب الرفض */}
+               {showRejectModal && (
+                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                   <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-8 max-w-md w-full relative">
+                     <button
+                       className="absolute top-3 left-3 text-gray-500 hover:text-red-500 text-2xl"
+                       onClick={() => setShowRejectModal(false)}
+                       aria-label="إغلاق"
+                     >
+                       ×
+                     </button>
+                     <h2 className="text-xl font-bold mb-4 text-red-600 text-center">سبب رفض الإعلان</h2>
+                     <textarea
+                       className="w-full px-3 py-2 rounded-lg border dark:bg-gray-800 dark:text-white mb-4"
+                       rows={3}
+                       placeholder="اكتب سبب الرفض هنا..."
+                       value={rejectReason}
+                       onChange={e => setRejectReason(e.target.value)}
+                     />
+                     <div className="flex gap-4 mt-6">
+                       <button
+                         className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg"
+                         onClick={() => setShowRejectModal(false)}
+                         type="button"
+                       >
+                         إلغاء
+                       </button>
+                       <button
+                         className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg"
+                         onClick={handleRejectAllConfirm}
+                         type="button"
+                         disabled={!rejectReason.trim() || imageActionLoading === (pendingRejectUnit?.unitId + 'rejectAll')}
+                       >
+                         {imageActionLoading === (pendingRejectUnit?.unitId + 'rejectAll') ? '...' : 'تأكيد الرفض'}
+                       </button>
+                     </div>
+                   </div>
+                 </div>
+               )}
+              {/* مودال عرض الصورة */}
+              {showImageModal && selectedImage && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                  <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-6 max-w-lg w-full relative flex flex-col items-center">
+                    <button
+                      className="absolute top-3 left-3 text-gray-500 hover:text-orange-600 text-2xl"
+                      onClick={() => setShowImageModal(false)}
+                      aria-label="إغلاق"
+                    >
+                      ×
+                    </button>
+                    <img
+                      src={selectedImage.url}
+                      alt="صورة الشقة"
+                      className="rounded-lg max-h-[60vh] mb-4 border mx-auto"
+                      style={{ maxWidth: '100%' }}
+                    />
+                    <div className="text-center">
+                      <p className="text-lg font-semibold text-gray-900 mb-1">{selectedImage.unitName}</p>
+                      {selectedImage.ownerName && (
+                        <p className="text-sm text-gray-600 mb-1">المالك: {selectedImage.ownerName}</p>
+                      )}
+                      <a
+                        href={selectedImage.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline text-xs mt-2 inline-block"
+                      >
+                        فتح الصورة في نافذة جديدة
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
               </div>
             ) : (
               <>
@@ -376,6 +687,58 @@ export default function AdminDashboard() {
                       </div>
                     )}
                   </div>
+                </div>
+                {/* جدول المستخدمين المسيئين */}
+                <div className="bg-white rounded-xl shadow-sm p-6 mt-8">
+                  <h2 className="text-xl font-bold mb-4 text-red-600">المستخدمون ذوو التعليقات المسيئة</h2>
+                  {loadingAbusive ? (
+                    <div className="text-center py-8 text-lg text-gray-600">جاري التحميل...</div>
+                  ) : abusiveUsers.length === 0 ? (
+                    <div className="text-center py-8 text-lg text-gray-600">لا يوجد مستخدمين لديهم أكثر من 3 تعليقات مسيئة حالياً</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm text-right">
+                        <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3">الاسم</th>
+                            <th className="px-4 py-3">رقم الهاتف</th>
+                            <th className="px-4 py-3">الدور</th>
+                            <th className="px-4 py-3">عدد التعليقات المسيئة</th>
+                            <th className="px-4 py-3">الحالة</th>
+                            <th className="px-4 py-3">الإجراءات</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {abusiveUsers.map((u) => (
+                            <tr key={u._id} className="border-b border-gray-200">
+                              <td className="py-2 px-4 font-semibold">{u.name}</td>
+                              <td className="py-2 px-4">{u.phone || '-'}</td>
+                              <td className="py-2 px-4">{u.role}</td>
+                              <td className="py-2 px-4 text-center">{u.abusiveCommentsCount}</td>
+                              <td className="py-2 px-4">
+                                {u.isBlocked ? (
+                                  <span className="text-red-600 font-bold">محظور</span>
+                                ) : (
+                                  <span className="text-green-600 font-bold">نشط</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-4">
+                                {!u.isBlocked && (
+                                  <button
+                                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
+                                    disabled={blockLoadingId === u._id}
+                                    onClick={() => handleBlockUser(u._id)}
+                                  >
+                                    {blockLoadingId === u._id ? '...' : 'بلوك'}
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </>
             )}
