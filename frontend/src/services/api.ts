@@ -66,7 +66,7 @@ export interface Unit {
   hasWifi: boolean;
   hasKitchenware: boolean;
   hasHeating: boolean;
-  status: "available" | "booked" | "under maintenance";
+  status: "available" | "booked" | "under maintenance" | "approved";
   createdAt?: string;
   updatedAt?: string;
 }
@@ -351,18 +351,19 @@ class ApiService {
     });
   }
 
-  async sendBookingRequest(unitId: string, message: string = "") {
+  async sendBookingRequest(
+    unitId: string,
+    bookingData: {
+      startDate: string;
+      endDate: string;
+      durationMonths: number;
+      price: number;
+      message?: string;
+    }
+  ) {
     const token = localStorage.getItem("leasemate_token");
     if (!token) throw new Error("يجب تسجيل الدخول أولاً");
-    
-    const requestData = { unitId, message };
-    
-    console.log("=== FRONTEND BOOKING REQUEST DEBUG ===");
-    console.log("Token exists:", !!token);
-    console.log("Request data:", requestData);
-    console.log("JSON stringified:", JSON.stringify(requestData));
-    console.log("=====================================");
-    
+    const requestData = { unitId, ...bookingData };
     return this.request("/booking/request", {
       method: "POST",
       headers: {
@@ -414,8 +415,11 @@ class ApiService {
     });
   }
 
-  async getMyLeases() {
-    return this.request("/leases/my-leases", {
+  async getMyLeases(page = 1, limit = 5) {
+    const searchParams = new URLSearchParams();
+    if (page) searchParams.append("page", page.toString());
+    if (limit) searchParams.append("limit", limit.toString());
+    return this.request(`/leases/my-leases${searchParams.toString() ? `?${searchParams.toString()}` : ''}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("leasemate_token")}`,
       },
@@ -514,6 +518,154 @@ class ApiService {
       console.error('Notification error:', error);
       // لا ترجع res.status(500) هنا
     }
+  }
+
+  // رفض العقد من قبل المستأجر
+  async rejectLease(leaseId: string, reason: string) {
+    const token = localStorage.getItem("leasemate_token");
+    if (!token) throw new Error("يجب تسجيل الدخول أولاً");
+    return this.request(`/leases/${leaseId}/reject`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async acceptLease(leaseId: string) {
+    const token = localStorage.getItem("leasemate_token");
+    if (!token) throw new Error("يجب تسجيل الدخول أولاً");
+    return this.request(`/leases/${leaseId}/accept`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+  }
+
+  async getMyBookingRequestsByUnit(unitId: string) {
+    const token = localStorage.getItem("leasemate_token");
+    if (!token) throw new Error("يجب تسجيل الدخول أولاً");
+    return this.request(`/booking/my-requests/${unitId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  // Admin: Get all pending unit images
+  async getPendingUnitImages(token: string) {
+    return this.request<{ status: string; data: { pendingImages: any[] } }>(
+      '/units/admin/pending-images',
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  }
+
+  // Admin: Approve or reject a unit image
+  async reviewUnitImage({ unitId, imageUrl, action, token }: { unitId: string; imageUrl: string; action: 'approve' | 'reject'; token: string }) {
+    return this.request<{ status: string; data: any }>(
+      `/units/admin/review-image?action=${action}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ unitId, imageUrl }),
+      }
+    );
+  }
+
+  // Admin: Approve unit
+  async approveUnit({ unitId, token }: { unitId: string; token: string }) {
+    return this.request<{ status: string; data: any }>(
+      '/units/admin/approve-unit',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ unitId }),
+      }
+    );
+  }
+
+  // Admin: Reject unit
+  async rejectUnit({ unitId, reason, token }: { unitId: string; reason: string; token: string }) {
+    return this.request<{ status: string; data: any }>(
+      '/units/admin/reject-unit',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ unitId, reason }),
+      }
+    );
+  }
+
+  // Admin: Approve all images for a unit
+  async approveAllUnitImages({ unitId, token }: { unitId: string; token: string }) {
+    return this.request<{ status: string; data: any }>(
+      '/units/admin/approve-all-images',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ unitId }),
+      }
+    );
+  }
+
+  // Admin: Reject all images for a unit
+  async rejectAllUnitImages({ unitId, reason, token }: { unitId: string; reason: string; token: string }) {
+    return this.request<{ status: string; data: any }>(
+      '/units/admin/reject-all-images',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ unitId, reason }),
+      }
+    );
+  }
+
+  // Admin: Get users with more than 3 abusive comments
+  async getAbusiveUsers(token: string) {
+    return this.request<{ users: any[] }>(
+      '/admin/users/abusive',
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  }
+
+  // Admin: Block a user
+  async blockUser(userId: string, token: string) {
+    return this.request<{ message: string }>(
+      `/admin/users/${userId}/block`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
   }
 }
 
