@@ -68,6 +68,21 @@ export default function LeaseDetailsPage() {
     );
   }
 
+  // تحديد نص الحالة بشكل ديناميكي
+  const now = new Date();
+  let statusText = "";
+  if (lease.status === "rejected") {
+    statusText = "مرفوض";
+  } else if (lease.status === "pending") {
+    statusText = "قيد الانتظار";
+  } else if (lease.endDate && new Date(lease.endDate) < now) {
+    statusText = "منتهي";
+  } else if (lease.status === "active") {
+    statusText = "نشط";
+  } else {
+    statusText = lease.status || "-";
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
@@ -97,12 +112,12 @@ export default function LeaseDetailsPage() {
               <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-3">
                 الطرف الأول (المالك)
               </h3>
-              <p className="mb-2">
-                <span className="font-semibold">الاسم:</span>{" "}
+              <p className="mb-2 dark:text-white">
+                <span className="font-semibold dark:text-white">الاسم:</span>{" "}
                 {lease.landlordId?.name}
               </p>
-              <p className="mb-2">
-                <span className="font-semibold">رقم الهاتف:</span>{" "}
+              <p className="mb-2 dark:text-white">
+                <span className="font-semibold dark:text-white">رقم الهاتف:</span>{" "}
                 {lease.landlordId?.phone}
               </p>
             </div>
@@ -110,12 +125,12 @@ export default function LeaseDetailsPage() {
               <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-3">
                 الطرف الثاني (المستأجر)
               </h3>
-              <p className="mb-2">
-                <span className="font-semibold">الاسم:</span>{" "}
+              <p className="mb-2 dark:text-white">
+                <span className="font-semibold dark:text-white">الاسم:</span>{" "}
                 {lease.tenantId?.name}
               </p>
-              <p className="mb-2">
-                <span className="font-semibold">رقم الهاتف:</span>{" "}
+              <p className="mb-2 dark:text-white">
+                <span className="font-semibold dark:text-white">رقم الهاتف:</span>{" "}
                 {lease.tenantId?.phone}
               </p>
             </div>
@@ -127,16 +142,16 @@ export default function LeaseDetailsPage() {
               بيانات الوحدة
             </h3>
             <div className="grid md:grid-cols-3 gap-4">
-              <p>
-                <span className="font-semibold">اسم الوحدة:</span>{" "}
+              <p className="dark:text-white">
+                <span className="font-semibold dark:text-white">اسم الوحدة:</span>{" "}
                 {lease.unitId?.name}
               </p>
-              <p>
-                <span className="font-semibold">العنوان:</span>{" "}
+              <p className="dark:text-white">
+                <span className="font-semibold dark:text-white">العنوان:</span>{" "}
                 {lease.unitId?.address}
               </p>
-              <p>
-                <span className="font-semibold">النوع:</span>{" "}
+              <p className="dark:text-white">
+                <span className="font-semibold dark:text-white">النوع:</span>{" "}
                 {lease.unitId?.type}
               </p>
             </div>
@@ -148,34 +163,48 @@ export default function LeaseDetailsPage() {
               بيانات العقد
             </h3>
             <div className="grid md:grid-cols-2 gap-4">
-              <p>
-                <span className="font-semibold">قيمة الإيجار الشهري:</span>{" "}
+              <p className="dark:text-white">
+                <span className="font-semibold dark:text-white">قيمة الإيجار الشهري:</span>{" "}
                 {lease.rentAmount} جنيه مصري
               </p>
-              <p>
-                <span className="font-semibold">قيمة التأمين:</span>{" "}
+              <p className="dark:text-white">
+                <span className="font-semibold dark:text-white">قيمة التأمين:</span>{" "}
                 {lease.depositAmount} جنيه مصري
               </p>
-              <p>
-                <span className="font-semibold">تاريخ بداية العقد:</span>{" "}
+              <p className="dark:text-white">
+                <span className="font-semibold dark:text-white">تاريخ بداية العقد:</span>{" "}
                 {lease.startDate
                   ? new Date(lease.startDate).toLocaleDateString("ar-EG")
                   : "-"}
               </p>
-              <p>
-                <span className="font-semibold">تاريخ نهاية العقد:</span>{" "}
+              <p className="dark:text-white">
+                <span className="font-semibold dark:text-white">تاريخ نهاية العقد:</span>{" "}
                 {lease.endDate
                   ? new Date(lease.endDate).toLocaleDateString("ar-EG")
                   : "-"}
               </p>
-              <p>
-                <span className="font-semibold">شروط الدفع:</span>{" "}
+              <p className="dark:text-white">
+                <span className="font-semibold dark:text-white">شروط الدفع:</span>{" "}
                 {lease.paymentTerms || "-"}
               </p>
-              <p>
-                <span className="font-semibold">حالة العقد:</span>{" "}
-                {lease.status === "active" ? "نشط" : "منتهي"}
+              <p className="dark:text-white">
+                <span className="font-semibold dark:text-white">حالة العقد:</span>{" "}
+                {statusText}
               </p>
+            </div>
+            {/* المبلغ الإجمالي */}
+            <div className="mt-4 text-lg font-bold text-orange-700 dark:text-orange-300">
+              {(() => {
+                let months = 1;
+                if (lease.startDate && lease.endDate) {
+                  const start = new Date(lease.startDate);
+                  const end = new Date(lease.endDate);
+                  months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+                  if (months < 1) months = 1;
+                }
+                const totalAmount = lease.rentAmount && months ? lease.rentAmount * months : null;
+                return totalAmount ? `المبلغ الإجمالي: ${totalAmount.toLocaleString()} جنيه مصري (${months} شهر)` : null;
+              })()}
             </div>
           </div>
 
@@ -183,26 +212,26 @@ export default function LeaseDetailsPage() {
           <div className="border-t-2 border-orange-500 pt-6">
             <div className="grid md:grid-cols-2 gap-8">
               <div className="text-center">
-                <h4 className="font-bold mb-4">توقيع الطرف الأول (المالك)</h4>
+                <h4 className="font-bold mb-4 dark:text-white">توقيع الطرف الأول (المالك)</h4>
                 <div className="border-b-2 border-gray-400 w-48 mx-auto h-8 mb-2"></div>
-                <p className="text-sm">{lease.landlordId?.name}</p>
+                <p className="text-sm dark:text-white">{lease.landlordId?.name}</p>
               </div>
               <div className="text-center">
-                <h4 className="font-bold mb-4">
+                <h4 className="font-bold mb-4 dark:text-white">
                   توقيع الطرف الثاني (المستأجر)
                 </h4>
                 <div className="border-b-2 border-gray-400 w-48 mx-auto h-8 mb-2"></div>
-                <p className="text-sm">{lease.tenantId?.name}</p>
+                <p className="text-sm dark:text-white">{lease.tenantId?.name}</p>
               </div>
             </div>
           </div>
 
           {/* الخلاصة */}
           <div className="text-center mt-8 p-4 bg-orange-50 dark:bg-orange-900 rounded-lg">
-            <p className="text-gray-700 font-extrabold dark:text-gray-300 ">
+            <p className="text-gray-700 font-extrabold dark:text-white ">
               تم تحرير هذا العقد بين الطرفين ويخضع لأحكام القانون المصري.
             </p>
-            <p className="text-gray-700 font-extrabold dark:text-gray-300">
+            <p className="text-gray-700 font-extrabold dark:text-white">
               {" "}
               بند فسخ العقد والإخلاء المبكر لا يجوز لأي من الطرفين (المالك أو
               المستأجر) إنهاء عقد الإيجار أو طلب الإخلاء إلا بموجب إخطار كتابي
@@ -215,7 +244,7 @@ export default function LeaseDetailsPage() {
                3-الإضرار الجسيم
               بالوحدة المؤجرة.
             </p>
-            <p className="text-gray-700 dark:text-gray-300">
+            <p className="text-gray-700 dark:text-white">
               تم التوقيع على هذا العقد في يوم{" "}
               {new Date().toLocaleDateString("ar-EG")}، ويعتبر ساري المفعول من
               تاريخ التوقيع.
