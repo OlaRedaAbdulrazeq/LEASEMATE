@@ -13,7 +13,7 @@ import {
   Legend,
 } from 'chart.js';
 ChartJS.register(ArcElement, Tooltip, Legend);
-import Image from 'next/image';
+
 
 interface User {
   _id: string;
@@ -52,7 +52,7 @@ export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const usersPerPage = 6; // Number of users per page
  
-  const [activeTab, setActiveTab] = useState<'table' | 'dashboard' | 'images'>('table');
+  const [activeTab, setActiveTab] = useState<'table' | 'dashboard' | 'images' | 'abusive'>('table');
 
   // State for pending images (now pending units)
   const [pendingUnits, setPendingUnits] = useState<any[]>([]);
@@ -68,6 +68,7 @@ export default function AdminDashboard() {
   const [abusiveUsers, setAbusiveUsers] = useState<AbusiveUser[]>([]);
   const [loadingAbusive, setLoadingAbusive] = useState(false);
   const [blockLoadingId, setBlockLoadingId] = useState<string | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Check admin access
   useEffect(() => {
@@ -116,8 +117,8 @@ export default function AdminDashboard() {
     if (!token) return;
     setLoadingImages(true);
     try {
-      const res = await apiService.getPendingUnitImages(token);
-      setPendingUnits(res.data.pendingImages || []);
+      const res = await apiService.getPendingUnitImages(token) as { data: { pendingUnits?: any[], pendingImages?: any[] } };
+      setPendingUnits(res.data.pendingUnits || res.data.pendingImages || []);
     } catch (err) {
       setPendingUnits([]);
     } finally {
@@ -248,6 +249,10 @@ export default function AdminDashboard() {
     }
   };
 
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
   const filteredUsers = users.filter(user => {
     const statusMatch = selectedStatus === 'all' || user.verificationStatus?.status === selectedStatus;
     const roleMatch = selectedRole === 'all' || user.role === selectedRole;
@@ -335,60 +340,80 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="relative flex size-full min-h-screen flex-col bg-stone-50 group/design-root overflow-x-hidden">
+    <div className={`relative flex size-full min-h-screen flex-col group/design-root overflow-x-hidden ${isDarkMode ? 'bg-gray-900' : 'bg-stone-50'}`}>
       <div className="flex h-full grow">
         {/* Sidebar */}
-        <aside className="flex flex-col w-64 bg-white border-r border-gray-200 p-6 shrink-0">
+        <aside className={`flex flex-col w-64 border-r p-6 shrink-0 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <div className="flex items-center gap-3 mb-8">
-            <Logo size={40} />
+            <Logo size={80} />
           </div>
           
           <nav className="flex flex-col gap-2">
             <button
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-600 hover:bg-stone-100'}`}
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${activeTab === 'dashboard' ? (isDarkMode ? 'bg-orange-900 text-orange-300 font-semibold' : 'bg-orange-50 text-orange-600 font-semibold') : (isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-stone-100')}`}
               onClick={() => setActiveTab('dashboard')}
             >
-              <svg className="text-orange-500" fill="currentColor" height="24px" viewBox="0 0 256 256" width="24px">
-                <circle cx="128" cy="128" r="96" fill="currentColor" opacity="0.2" />
-                <path d="M128,32A96,96,0,1,0,224,128,96.11,96.11,0,0,0,128,32Zm0,176a80,80,0,1,1,80-80A80.09,80.09,0,0,1,128,208Z" />
+              <svg className={`${activeTab === 'dashboard' ? 'text-orange-500' : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
+                <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
               </svg>
               <p className="text-sm font-semibold">لوحة التحكم</p>
             </button>
             <button
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${activeTab === 'table' ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-600 hover:bg-stone-100'}`}
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${activeTab === 'table' ? (isDarkMode ? 'bg-orange-900 text-orange-300 font-semibold' : 'bg-orange-50 text-orange-600 font-semibold') : (isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-stone-100')}`}
               onClick={() => setActiveTab('table')}
             >
-              <svg className="text-gray-600" fill="currentColor" height="24px" viewBox="0 0 256 256" width="24px">
-                <rect width="256" height="256" fill="none" />
-                <rect x="40" y="56" width="176" height="144" rx="8" fill="none" stroke="currentColor" strokeWidth="16" />
-                <line x1="40" y1="104" x2="216" y2="104" fill="none" stroke="currentColor" strokeWidth="16" />
-                <line x1="40" y1="152" x2="216" y2="152" fill="none" stroke="currentColor" strokeWidth="16" />
+              <svg className={`${activeTab === 'table' ? 'text-orange-500' : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
+                <path d="M3 3h18v2H3V3zm0 4h18v2H3V7zm0 4h18v2H3v-2zm0 4h18v2H3v-2zm0 4h18v2H3v-2z"/>
               </svg>
               <p className="text-sm font-medium">جدول المستخدمين</p>
             </button>
             <button
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${activeTab === 'images' ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-600 hover:bg-stone-100'}`}
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${activeTab === 'images' ? (isDarkMode ? 'bg-orange-900 text-orange-300 font-semibold' : 'bg-orange-50 text-orange-600 font-semibold') : (isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-stone-100')}`}
               onClick={() => setActiveTab('images')}
             >
-              <svg className="text-orange-500" fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
+              <svg className={`${activeTab === 'images' ? 'text-orange-500' : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
                 <path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2Zm-2 0H5V5h14ZM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5Z" />
               </svg>
               <p className="text-sm font-semibold">مراجعة صور الشقق</p>
+            </button>
+            <button
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${activeTab === 'abusive' ? (isDarkMode ? 'bg-orange-900 text-orange-300 font-semibold' : 'bg-orange-50 text-orange-600 font-semibold') : (isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-stone-100')}`}
+              onClick={() => setActiveTab('abusive')}
+            >
+              <svg className={`${activeTab === 'abusive' ? 'text-orange-500' : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+              <p className="text-sm font-semibold">المستخدمون المسيئون</p>
             </button>
           
           </nav>
           
           <div className="mt-auto">
-          
+            <button
+              onClick={toggleTheme}
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors w-full mb-2 ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-stone-100'}`}
+            >
+              {isDarkMode ? (
+                <svg className="text-yellow-400" fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
+                  <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"/>
+                </svg>
+              ) : (
+                <svg className="text-gray-600" fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
+                  <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM6.166 17.834a.75.75 0 001.06 1.06l1.591-1.59a.75.75 0 10-1.06-1.061l-1.591 1.59zM2.25 12a.75.75 0 01.75-.75H5a.75.75 0 010 1.5H3a.75.75 0 01-.75-.75zM6.166 6.166a.75.75 0 001.06-1.06L5.636 3.515a.75.75 0 00-1.061 1.06l1.59 1.591z"/>
+                </svg>
+              )}
+              <p className="text-sm font-medium">{isDarkMode ? 'الوضع الفاتح' : 'الوضع الداكن'}</p>
+            </button>
+            
             <button
               onClick={() => {
                 logout();
                 router.push('/auth/login');
               }}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-600 hover:bg-stone-100 transition-colors w-full mt-2"
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors w-full ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-stone-100'}`}
             >
-              <svg className="text-gray-600" fill="currentColor" height="24px" viewBox="0 0 256 256" width="24px">
-                <path d="M112,216a8,8,0,0,1-8,8H48a16,16,0,0,1-16-16V48A16,16,0,0,1,48,32h56a8,8,0,0,1,0,16H48V208h56A8,8,0,0,1,112,216Zm109.66-93.66-40-40a8,8,0,0,0-11.32,11.32L196.69,120H104a8,8,0,0,0,0,16h92.69l-26.35,26.34a8,8,0,0,0,11.32,11.32l40-40A8,8,0,0,0,221.66,122.34Z"></path>
+              <svg className={isDarkMode ? 'text-gray-300' : 'text-gray-600'} fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
+                <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
               </svg>
               <p className="text-sm font-medium">تسجيل الخروج</p>
             </button>
@@ -396,43 +421,43 @@ export default function AdminDashboard() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-8 bg-orange-50">
+        <main className={`flex-1 p-8 ${isDarkMode ? 'bg-gray-900' : 'bg-orange-50'}`}>
           <div className="max-w-7xl mx-auto">
             {activeTab === 'dashboard' ? (
               <div className="flex flex-col items-center gap-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">لوحة التحكم</h1>
+                <h1 className={`text-3xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>لوحة التحكم</h1>
                 {/* Usage Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mb-8">
-                  <div className="bg-white rounded-xl shadow p-6 text-center">
+                  <div className={`rounded-xl shadow p-6 text-center ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
                     <p className="text-2xl font-bold text-orange-600 mb-2">{totalUsers}</p>
-                    <p className="text-gray-700">إجمالي المستخدمين</p>
+                    <p className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>إجمالي المستخدمين</p>
                   </div>
-                  <div className="bg-white rounded-xl shadow p-6 text-center">
+                  <div className={`rounded-xl shadow p-6 text-center ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
                     <p className="text-2xl font-bold text-orange-600 mb-2">{totalLandlords}</p>
-                    <p className="text-gray-700">المالكون</p>
+                    <p className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>المالكون</p>
                   </div>
-                  <div className="bg-white rounded-xl shadow p-6 text-center">
+                  <div className={`rounded-xl shadow p-6 text-center ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
                     <p className="text-2xl font-bold text-orange-600 mb-2">{totalTenants}</p>
-                    <p className="text-gray-700">المستأجرون</p>
+                    <p className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>المستأجرون</p>
                   </div>
                 </div>
                 {/* Pie Chart */}
-                <div className="bg-white rounded-xl shadow p-8 w-full max-w-xl flex flex-col items-center">
-                  <h2 className="text-xl font-semibold mb-4 text-gray-900">توزيع حالة التأكيد</h2>
+                <div className={`rounded-xl shadow p-8 w-full max-w-xl flex flex-col items-center ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <h2 className={`text-xl font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>توزيع حالة التأكيد</h2>
                   <Pie data={pieData} />
                 </div>
               </div>
             ) : activeTab === 'images' ? (
               <div>
-                <h1 className="text-2xl font-bold mb-6 text-gray-900">صور الشقق قيد المراجعة</h1>
+                <h1 className={`text-2xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>صور الشقق قيد المراجعة</h1>
                 {loadingImages ? (
-                  <div className="text-center py-12 text-lg text-gray-600">جاري التحميل...</div>
+                  <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>جاري التحميل...</div>
                 ) : pendingUnits.length === 0 ? (
-                  <div className="text-center py-12 text-lg text-gray-600">لا توجد صور قيد المراجعة حالياً</div>
+                  <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>لا توجد صور قيد المراجعة حالياً</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-right">
-                      <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                      <thead className={`text-xs uppercase ${isDarkMode ? 'text-gray-300 bg-gray-800' : 'text-gray-500 bg-gray-50'}`}>
                         <tr>
                           <th className="px-4 py-3">الصور</th>
                           <th className="px-4 py-3">اسم الوحدة</th>
@@ -442,7 +467,7 @@ export default function AdminDashboard() {
                       </thead>
                       <tbody>
                         {pendingUnits.map((unit) => (
-                          <tr key={unit.unitId} className="border-b border-gray-200">
+                          <tr key={unit.unitId} className={`border-b ${isDarkMode ? 'border-gray-700 bg-gray-900 hover:bg-gray-800' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
                             <td className="py-2 px-4">
                               <div className="flex gap-2 flex-wrap">
                                 {unit.images.map((img: any, idx: number) => (
@@ -459,8 +484,8 @@ export default function AdminDashboard() {
                                 ))}
                               </div>
                             </td>
-                            <td className="py-2 px-4 font-semibold">{unit.unitName}</td>
-                            <td className="py-2 px-4">{unit.owner?.name || '-'}</td>
+                            <td className={`py-2 px-4 font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{unit.unitName}</td>
+                            <td className={`py-2 px-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{unit.owner?.name || '-'}</td>
                             <td className="py-2 px-4">
                               <div className="flex gap-2">
                                 <button
@@ -490,9 +515,9 @@ export default function AdminDashboard() {
                {/* مودال سبب الرفض */}
                {showRejectModal && (
                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                   <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-8 max-w-md w-full relative">
+                   <div className={`rounded-xl shadow-xl p-8 max-w-md w-full relative ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
                      <button
-                       className="absolute top-3 left-3 text-gray-500 hover:text-red-500 text-2xl"
+                       className={`absolute top-3 left-3 text-2xl ${isDarkMode ? 'text-gray-400 hover:text-red-400' : 'text-gray-500 hover:text-red-500'}`}
                        onClick={() => setShowRejectModal(false)}
                        aria-label="إغلاق"
                      >
@@ -500,7 +525,7 @@ export default function AdminDashboard() {
                      </button>
                      <h2 className="text-xl font-bold mb-4 text-red-600 text-center">سبب رفض الإعلان</h2>
                      <textarea
-                       className="w-full px-3 py-2 rounded-lg border dark:bg-gray-800 dark:text-white mb-4"
+                       className={`w-full px-3 py-2 rounded-lg border mb-4 ${isDarkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'}`}
                        rows={3}
                        placeholder="اكتب سبب الرفض هنا..."
                        value={rejectReason}
@@ -529,9 +554,9 @@ export default function AdminDashboard() {
               {/* مودال عرض الصورة */}
               {showImageModal && selectedImage && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                  <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-6 max-w-lg w-full relative flex flex-col items-center">
+                  <div className={`rounded-xl shadow-xl p-6 max-w-lg w-full relative flex flex-col items-center ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
                     <button
-                      className="absolute top-3 left-3 text-gray-500 hover:text-orange-600 text-2xl"
+                      className={`absolute top-3 left-3 text-2xl ${isDarkMode ? 'text-gray-400 hover:text-orange-400' : 'text-gray-500 hover:text-orange-600'}`}
                       onClick={() => setShowImageModal(false)}
                       aria-label="إغلاق"
                     >
@@ -544,15 +569,15 @@ export default function AdminDashboard() {
                       style={{ maxWidth: '100%' }}
                     />
                     <div className="text-center">
-                      <p className="text-lg font-semibold text-gray-900 mb-1">{selectedImage.unitName}</p>
+                      <p className={`text-lg font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedImage.unitName}</p>
                       {selectedImage.ownerName && (
-                        <p className="text-sm text-gray-600 mb-1">المالك: {selectedImage.ownerName}</p>
+                        <p className={`text-sm mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>المالك: {selectedImage.ownerName}</p>
                       )}
                       <a
                         href={selectedImage.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 underline text-xs mt-2 inline-block"
+                        className="text-blue-400 underline text-xs mt-2 inline-block"
                       >
                         فتح الصورة في نافذة جديدة
                       </a>
@@ -561,23 +586,81 @@ export default function AdminDashboard() {
                 </div>
               )}
               </div>
+            ) : activeTab === 'abusive' ? (
+              <div>
+                <header className="mb-8">
+                  <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>المستخدمون ذوو التعليقات المسيئة</h1>
+                  <p className={`mt-1 ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>إدارة المستخدمين الذين لديهم تعليقات مسيئة.</p>
+                </header>
+                
+                <div className={`rounded-xl shadow-sm p-6 border ${isDarkMode ? 'bg-red-900/20 border-red-700' : 'bg-red-50 border-red-200'}`}>
+                  {loadingAbusive ? (
+                    <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>جاري التحميل...</div>
+                  ) : abusiveUsers.length === 0 ? (
+                    <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>لا يوجد مستخدمين لديهم أكثر من 3 تعليقات مسيئة حالياً</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm text-right">
+                        <thead className={`text-xs uppercase ${isDarkMode ? 'text-red-300 bg-red-900/50' : 'text-red-700 bg-red-100'}`}>
+                          <tr>
+                            <th className="px-4 py-3">الاسم</th>
+                            <th className="px-4 py-3">رقم الهاتف</th>
+                            <th className="px-4 py-3">الدور</th>
+                            <th className="px-4 py-3">عدد التعليقات المسيئة</th>
+                            <th className="px-4 py-3">الحالة</th>
+                            <th className="px-4 py-3">الإجراءات</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {abusiveUsers.map((u) => (
+                            <tr key={u._id} className={`border-b ${isDarkMode ? 'border-red-700 bg-gray-900 hover:bg-red-900/20' : 'border-red-200 bg-white hover:bg-red-50'}`}>
+                              <td className={`py-2 px-4 font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{u.name}</td>
+                              <td className={`py-2 px-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{u.phone || '-'}</td>
+                              <td className={`py-2 px-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{u.role}</td>
+                              <td className={`py-2 px-4 text-center ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{u.abusiveCommentsCount}</td>
+                              <td className="py-2 px-4">
+                                {u.isBlocked ? (
+                                  <span className="text-red-400 font-bold">محظور</span>
+                                ) : (
+                                  <span className="text-green-400 font-bold">نشط</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-4">
+                                {!u.isBlocked && (
+                                  <button
+                                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
+                                    disabled={blockLoadingId === u._id}
+                                    onClick={() => handleBlockUser(u._id)}
+                                  >
+                                    {blockLoadingId === u._id ? '...' : 'بلوك'}
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
             ) : (
               <>
                 <header className="mb-8">
-                  <h1 className="text-3xl font-bold text-gray-900">التأكيدات</h1>
-                  <p className="text-gray-600 mt-1">إدارة التأكيدات والتقارير.</p>
+                  <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>التأكيدات</h1>
+                  <p className={`mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>إدارة التأكيدات والتقارير.</p>
                 </header>
 
        
 
-                <div className="bg-white rounded-xl shadow-sm p-6">
+                <div className={`rounded-xl shadow-sm p-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
                   <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
                     <div className="flex gap-3 flex-wrap">
                       <div className="relative">
                         <select 
                           value={selectedStatus}
                           onChange={(e) => setSelectedStatus(e.target.value)}
-                          className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg border border-gray-200 bg-white pl-4 pr-3 text-gray-600 hover:bg-gray-50"
+                          className={`flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg border pl-4 pr-3 ${isDarkMode ? 'border-gray-600 bg-gray-700 text-gray-300 hover:bg-gray-600' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}
                         >
                           <option value="all">الكل</option>
                           <option value="pending">قيد الانتظار</option>
@@ -589,7 +672,7 @@ export default function AdminDashboard() {
                         <select 
                           value={selectedRole}
                           onChange={(e) => setSelectedRole(e.target.value)}
-                          className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg border border-gray-200 bg-white pl-4 pr-3 text-gray-600 hover:bg-gray-50"
+                          className={`flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg border pl-4 pr-3 ${isDarkMode ? 'border-gray-600 bg-gray-700 text-gray-300 hover:bg-gray-600' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}
                         >
                           <option value="all">الكل</option>
                           <option value="landlord">المالك</option>
@@ -602,7 +685,7 @@ export default function AdminDashboard() {
 
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                      <thead className={`text-xs uppercase ${isDarkMode ? 'text-gray-300 bg-gray-700' : 'text-gray-500 bg-gray-50'}`}>
                         <tr>
                           <th className="px-6 py-3" scope="col">المستخدم</th>
                           <th className="px-6 py-3" scope="col">الدور</th>
@@ -620,23 +703,23 @@ export default function AdminDashboard() {
                           </tr>
                         ) : filteredUsers.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                            <td colSpan={5} className={`px-6 py-4 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                               لا يوجد مستخدمين
                             </td>
                           </tr>
                         ) : (
                           currentUsers.map((user) => (
-                            <tr key={user._id} className="bg-white border-b border-gray-200 hover:bg-gray-50">
-                              <td className="px-6 py-4 font-medium text-gray-900">
+                            <tr key={user._id} className={`border-b ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
+                              <td className={`px-6 py-4 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                 {user.name}
                               </td>
-                              <td className="px-6 py-4 text-gray-600 capitalize">
+                              <td className={`px-6 py-4 capitalize ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                                 {user.role}
                               </td>
                               <td className="px-6 py-4">
                                 {getStatusBadge(user.verificationStatus?.status || 'not_submitted')}
                               </td>
-                              <td className="px-6 py-4 text-gray-600">
+                              <td className={`px-6 py-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                                 {new Date(user.createdAt).toLocaleDateString()}
                               </td>
                               <td className="px-6 py-4 text-right">
@@ -664,7 +747,7 @@ export default function AdminDashboard() {
                         <button
                           onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                           disabled={currentPage === 1}
-                          className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+                          className={`px-3 py-1 rounded disabled:opacity-50 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}
                         >
                           السابق
                         </button>
@@ -672,7 +755,7 @@ export default function AdminDashboard() {
                           <button
                             key={idx + 1}
                             onClick={() => setCurrentPage(idx + 1)}
-                            className={`px-3 py-1 rounded ${currentPage === idx + 1 ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+                            className={`px-3 py-1 rounded ${currentPage === idx + 1 ? 'bg-orange-500 text-white' : (isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700')}`}
                           >
                             {idx + 1}
                           </button>
@@ -680,65 +763,13 @@ export default function AdminDashboard() {
                         <button
                           onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                           disabled={currentPage === totalPages}
-                          className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+                          className={`px-3 py-1 rounded disabled:opacity-50 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}
                         >
                           التالي
                         </button>
                       </div>
                     )}
                   </div>
-                </div>
-                {/* جدول المستخدمين المسيئين */}
-                <div className="bg-white rounded-xl shadow-sm p-6 mt-8">
-                  <h2 className="text-xl font-bold mb-4 text-red-600">المستخدمون ذوو التعليقات المسيئة</h2>
-                  {loadingAbusive ? (
-                    <div className="text-center py-8 text-lg text-gray-600">جاري التحميل...</div>
-                  ) : abusiveUsers.length === 0 ? (
-                    <div className="text-center py-8 text-lg text-gray-600">لا يوجد مستخدمين لديهم أكثر من 3 تعليقات مسيئة حالياً</div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm text-right">
-                        <thead className="text-xs text-gray-500 uppercase bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3">الاسم</th>
-                            <th className="px-4 py-3">رقم الهاتف</th>
-                            <th className="px-4 py-3">الدور</th>
-                            <th className="px-4 py-3">عدد التعليقات المسيئة</th>
-                            <th className="px-4 py-3">الحالة</th>
-                            <th className="px-4 py-3">الإجراءات</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {abusiveUsers.map((u) => (
-                            <tr key={u._id} className="border-b border-gray-200">
-                              <td className="py-2 px-4 font-semibold">{u.name}</td>
-                              <td className="py-2 px-4">{u.phone || '-'}</td>
-                              <td className="py-2 px-4">{u.role}</td>
-                              <td className="py-2 px-4 text-center">{u.abusiveCommentsCount}</td>
-                              <td className="py-2 px-4">
-                                {u.isBlocked ? (
-                                  <span className="text-red-600 font-bold">محظور</span>
-                                ) : (
-                                  <span className="text-green-600 font-bold">نشط</span>
-                                )}
-                              </td>
-                              <td className="py-2 px-4">
-                                {!u.isBlocked && (
-                                  <button
-                                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
-                                    disabled={blockLoadingId === u._id}
-                                    onClick={() => handleBlockUser(u._id)}
-                                  >
-                                    {blockLoadingId === u._id ? '...' : 'بلوك'}
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
                 </div>
               </>
             )}
@@ -748,19 +779,19 @@ export default function AdminDashboard() {
 
       {showModal && selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-8 max-w-md w-full relative">
+          <div className={`rounded-xl shadow-xl p-8 max-w-md w-full relative ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
             <button
-              className="absolute top-3 right-3 text-gray-500 hover:text-orange-600"
+              className={`absolute top-3 right-3 ${isDarkMode ? 'text-gray-400 hover:text-orange-400' : 'text-gray-500 hover:text-orange-600'}`}
               onClick={() => setShowModal(false)}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white text-center">{selectedUser.name}</h2>
+            <h2 className={`text-xl font-bold mb-4 text-center ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.name}</h2>
             <div className="mb-4">
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{selectedUser.email}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{selectedUser.phone}</p>
+              <p className={`text-sm mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{selectedUser.email}</p>
+              <p className={`text-sm mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{selectedUser.phone}</p>
             </div>
             <div className="mb-4 flex flex-col gap-4 items-center">
               {selectedUser.verificationStatus?.uploadedIdUrl && (
