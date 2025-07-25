@@ -32,6 +32,7 @@ const login = async (req, res) => {
       role: user.role,
       token: generateToken(user._id),
       verificationStatus: user.verificationStatus,
+      isBlocked: user.isBlocked,
     });
   } else {
     return res.status(401).json({ errors: [{ msg: "اسم المستخدم أو كلمة المرور غير صحيحة", param: "general" }] });
