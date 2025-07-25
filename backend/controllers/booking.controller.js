@@ -21,7 +21,7 @@ exports.createBookingRequest = async (req, res) => {
       });
     }
 
-    const { unitId, message } = req.body;
+    const { unitId, message, startDate, endDate, durationMonths, price } = req.body;
     
     // التحقق من unitId
     if (!unitId) {
@@ -41,7 +41,11 @@ exports.createBookingRequest = async (req, res) => {
     const newRequest = new BookingRequest({
       tenantId: req.user._id,
       unitId,
-      message: message || ""
+      message: message || "",
+      startDate,
+      endDate,
+      durationMonths,
+      price
     });
 
     await newRequest.save();
@@ -104,7 +108,7 @@ exports.getLandlordBookings = async (req, res) => {
     // جلب جميع طلبات الحجز المعلقة
     const bookings = await BookingRequest.find({ status: "pending" })
       .populate("tenantId", "name email phone")
-      .populate("unitId", "name ownerId")
+      .populate("unitId", "name ownerId pricePerMonth securityDeposit")
       .lean();
 
     // console.log("All pending bookings:", bookings.length);
@@ -176,6 +180,23 @@ exports.rejectBookingRequest = async (req, res) => {
     res.status(200).json({ message: "Booking request rejected and deleted, notification sent." });
   } catch (err) {
     console.error("Reject booking request error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// جلب كل طلبات الحجز للمستخدم الحالي على وحدة معينة
+exports.getMyBookingRequestsByUnit = async (req, res) => {
+  try {
+    const { unitId } = req.params;
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+    const requests = await BookingRequest.find({
+      tenantId: req.user._id,
+      unitId: unitId
+    });
+    res.json({ status: "success", data: { requests } });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
