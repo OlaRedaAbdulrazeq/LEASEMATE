@@ -213,6 +213,8 @@ const updateUnit = asyncWrapper(async (req, res, next) => {
   const updates = req.body;
   const files = req.files;
 
+
+
   const unit = await Unit.findById(id);
   if (!unit) {
     return next(appError.create("Unit not found", 404, httpStatusText.FAIL));
@@ -220,14 +222,23 @@ const updateUnit = asyncWrapper(async (req, res, next) => {
 
   // If new images are uploaded, delete old ones first
   if (files && files.length > 0) {
-    const oldImagePublicIds = unit.images.map((url) => extractPublicId(url));
+    const oldImagePublicIds = unit.images.map((img) => extractPublicId(img.url));
 
     await Promise.all(oldImagePublicIds.map((id) => deleteFromCloudinary(id)));
 
     const newImageUrls = await Promise.all(
       files.map((file) => uploadToCloudinary(file.buffer, "LeaseMate/units"))
     );
-    updates.images = newImageUrls;
+    
+    // إذا كانت الوحدة مرفوضة وتم رفع صور جديدة، قم بتغيير حالة الصور إلى pending
+    // وإعادة الوحدة إلى حالة pending للمراجعة
+    if (unit.status === "rejected") {
+      updates.images = newImageUrls.map(url => ({ url, status: "pending" }));
+      updates.status = "pending";
+      updates.rejectionReason = ""; // مسح سبب الرفض السابق
+    } else {
+      updates.images = newImageUrls.map(url => ({ url, status: "pending" }));
+    }
   }
 
   Object.assign(unit, updates);
@@ -247,7 +258,7 @@ const deleteUnit = asyncWrapper(async (req, res, next) => {
     return next(appError.create("Unit not found", 404, httpStatusText.FAIL));
   }
 
-  const publicIds = unit.images.map((url) => extractPublicId(url));
+  const publicIds = unit.images.map((img) => extractPublicId(img.url));
   await Promise.all(publicIds.map((id) => deleteFromCloudinary(id)));
 
   await unit.deleteOne();
@@ -267,7 +278,8 @@ const deleteUnitImage = asyncWrapper(async (req, res, next) => {
     return next(appError.create("Unit not found", 404, httpStatusText.FAIL));
   }
 
-  if (!unit.images.includes(imageUrl)) {
+  const imageIndex = unit.images.findIndex(img => img.url === imageUrl);
+  if (imageIndex === -1) {
     return next(
       appError.create("Image not found in unit", 404, httpStatusText.FAIL)
     );
@@ -276,7 +288,7 @@ const deleteUnitImage = asyncWrapper(async (req, res, next) => {
   const publicId = extractPublicId(imageUrl);
   await deleteFromCloudinary(publicId);
 
-  unit.images = unit.images.filter((url) => url !== imageUrl);
+  unit.images.splice(imageIndex, 1);
   await unit.save();
 
   res.status(200).json({
@@ -391,14 +403,15 @@ const rejectAllUnitImages = asyncWrapper(async (req, res, next) => {
       unit.rejectionReason = reason || "";
       await unit.save();
 
-      // إشعار للمالك
+      // إشعار للمالك مع رابط التعديل
       const notification = await notificationService.createNotification({
         userId: unit.ownerId._id,
         title: "تم رفض إعلانك",
         message: `تم رفض إعلان وحدتك (${unit.name}). السبب: ${
           reason || "غير محدد"
-        }. قم بالمحاولة مرة أخرى.`,
-        type: "GENERAL",
+        }. انقر هنا لتعديل الوحدة وإعادة رفعها.`,
+        type: "UNIT_REJECTED",
+        link: `/unit/${unit._id}/manage`,
       });
       // إرسال socket إذا متاح
       const io = req.app.get("io");
@@ -475,14 +488,15 @@ const rejectUnit = asyncWrapper(async (req, res, next) => {
   unit.rejectionReason = reason || "";
   await unit.save();
 
-  // إشعار للمالك
+  // إشعار للمالك مع رابط التعديل
   const notification = await notificationService.createNotification({
     userId: unit.ownerId._id,
     title: "تم رفض إعلانك",
     message: `تم رفض إعلان وحدتك (${unit.name}). السبب: ${
       reason || "غير محدد"
-    }. قم بالمحاولة مرة أخرى.`,
-    type: "GENERAL",
+    }. انقر هنا لتعديل الوحدة وإعادة رفعها.`,
+    type: "UNIT_REJECTED",
+    link: `/unit/${unit._id}/manage`,
   });
   // إرسال socket إذا متاح
   const io = req.app.get("io");
@@ -491,6 +505,39 @@ const rejectUnit = asyncWrapper(async (req, res, next) => {
   }
 
   res.status(200).json({ status: httpStatusText.SUCCESS, data: { unit } });
+});
+
+// إعادة إرسال الوحدة المرفوضة للمراجعة
+const resubmitRejectedUnit = asyncWrapper(async (req, res, next) => {
+  const { unitId } = req.params;
+  const unit = await Unit.findById(unitId);
+  if (!unit) {
+    return next(appError.create("Unit not found", 404, httpStatusText.FAIL));
+  }
+
+  // التأكد أن الوحدة مرفوضة
+  if (unit.status !== "rejected") {
+    return next(appError.create("Unit is not rejected", 400, httpStatusText.FAIL));
+  }
+
+  // تغيير حالة الوحدة إلى pending
+  unit.status = "pending";
+  unit.rejectionReason = "";
+  
+  // تغيير حالة جميع الصور إلى pending
+  unit.images.forEach((img) => {
+    if (img.status === "rejected") {
+      img.status = "pending";
+    }
+  });
+
+  await unit.save();
+
+  res.status(200).json({ 
+    status: httpStatusText.SUCCESS, 
+    data: { unit },
+    message: "Unit resubmitted for review successfully"
+  });
 });
 
 module.exports = {
@@ -507,4 +554,5 @@ module.exports = {
   rejectUnit,
   approveAllUnitImages,
   rejectAllUnitImages,
+  resubmitRejectedUnit,
 };
