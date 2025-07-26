@@ -118,4 +118,43 @@ exports.createChatWithFirstMessage = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'حدث خطأ أثناء إنشاء المحادثة' });
   }
+};
+
+// التحقق من وجود محادثة بين مستأجر ومالك لوحدة معينة
+exports.checkChatExists = async (req, res) => {
+  try {
+    const { tenantId, landlordId, unitId } = req.params;
+    
+    if (!tenantId || !landlordId || !unitId) {
+      return res.status(400).json({ error: 'جميع المعاملات مطلوبة' });
+    }
+
+    const chat = await Chat.findOne({ 
+      tenant: tenantId, 
+      landlord: landlordId, 
+      unit: unitId 
+    });
+
+    if (chat) {
+      // تحقق من وجود رسائل في المحادثة
+      const messageCount = await Message.countDocuments({ chat: chat._id });
+      
+      res.json({ 
+        exists: true, 
+        chatId: chat._id,
+        hasMessages: messageCount > 0,
+        messageCount 
+      });
+    } else {
+      res.json({ 
+        exists: false, 
+        chatId: null,
+        hasMessages: false,
+        messageCount: 0 
+      });
+    }
+  } catch (error) {
+    console.error('Error checking chat existence:', error);
+    res.status(500).json({ error: 'حدث خطأ أثناء التحقق من وجود المحادثة' });
+  }
 };  
