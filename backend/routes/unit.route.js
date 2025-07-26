@@ -15,6 +15,7 @@ const {
   rejectUnit,
   approveAllUnitImages,
   rejectAllUnitImages,
+  resubmitRejectedUnit,
 } = require("../controllers/unit.controller");
 
 const upload = require("../middlewares/upload.middleware");
@@ -83,6 +84,15 @@ router.post(
   protect,
   checkRole("admin"),
   rejectAllUnitImages
+);
+
+// Landlord endpoint for resubmitting rejected units
+router.post(
+  "/:unitId/resubmit",
+  protect,
+  checkRole("landlord"),
+  checkVerification,
+  resubmitRejectedUnit
 );
 
 module.exports = router;
