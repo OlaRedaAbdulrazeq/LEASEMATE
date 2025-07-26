@@ -128,32 +128,21 @@ exports.createNotification = async (req, res) => {
 // GET /api/notifications/:userId
 exports.getUserNotifications = async (req, res) => {
   try {
-     console.log("🔎 requestedUserId:", req.params.userId);
-    console.log("🔎 logged-in userId:", req.user._id.toString());
-    console.log("🔎 logged-in user role:", req.user.role);
-
     const requestedUserId = req.params.userId;
 
     if (requestedUserId !== req.user._id.toString() && req.user.role !== 'admin') {
-       console.log("❌ Forbidden access.");
       return res.status(403).json({
         status: "fail",
         message: 'Not authorized to access these notifications.'
       });
     }
 
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const result = await notificationService.getUserNotifications(requestedUserId);
 
-    const result = await notificationService.getUserNotifications(
-      requestedUserId,
-      limit, // should be limit first
-      page  // then page
-    );
-    console.log("✅ Notifications fetched:", result.data?.length);
     res.status(200).json({
       status: "success",
-      data: result.data
+      data: result.data,
+      total: result.total
     });
 
   } catch (error) {
