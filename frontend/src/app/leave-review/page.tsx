@@ -15,13 +15,15 @@ export default function LeaveReviewPage() {
   const leaseId = searchParams.get("leaseId");
   const revieweeId = searchParams.get("revieweeId");
 
-  const [rating, setRating] = useState<number>(5);
+  const [rating, setRating] = useState<number | null>(null);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [comment, setComment] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [alreadyReviewed, setAlreadyReviewed] = useState(false);
+  const [ratingError, setRatingError] = useState<string | null>(null);
+  const [commentError, setCommentError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkExistingReview = async () => {
@@ -54,13 +56,29 @@ export default function LeaveReviewPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Clear previous errors
+    setRatingError(null);
+    setCommentError(null);
+    setErrorMessage(null);
+
+    // Validate rating is required
+    if (!rating) {
+      setRatingError("برجاء ادخال تقييمك");
+      return;
+    }
+
+    // Validate comment is required
+    if (!comment.trim()) {
+      setCommentError("برجاء كتابة تعليقك");
+      return;
+    }
+
     if (!leaseId || !revieweeId || !token) {
       setErrorMessage("معلومات غير مكتملة.");
       return;
     }
 
     setLoading(true);
-    setErrorMessage(null);
     setSuccessMessage(null);
 
     try {
@@ -96,6 +114,18 @@ export default function LeaveReviewPage() {
     }
   };
 
+  const handleStarClick = (starValue: number) => {
+    setRating(starValue);
+    setRatingError(null); // Clear error when user selects a rating
+  };
+
+  const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setComment(e.target.value);
+    if (e.target.value.trim()) {
+      setCommentError(null); // Clear error when user starts typing
+    }
+  };
+
   return (
     <ProtectedRoute>
        <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
@@ -126,14 +156,14 @@ export default function LeaveReviewPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="flex flex-col items-center">
                 <label className="block text-gray-700 dark:text-gray-300 font-medium mb-2">
-                  التقييم
+                  التقييم 
                 </label>
                 <div className="flex gap-2 justify-center">
                   {[1, 2, 3, 4, 5].map((star) => {
                     const isFilled =
                       hoverRating !== null
                         ? star <= hoverRating
-                        : star <= rating;
+                        : (rating !== null && star <= rating);
 
                     const Icon = isFilled ? StarIcon : Star;
 
@@ -141,30 +171,37 @@ export default function LeaveReviewPage() {
                       <Icon
                         key={star}
                         size={40}
-                        onClick={() => setRating(star)}
+                        onClick={() => handleStarClick(star)}
                         onMouseEnter={() => setHoverRating(star)}
                         onMouseLeave={() => setHoverRating(null)}
                         className={`cursor-pointer transition-colors ${
                           isFilled
-                            ? "text-orange-500 dark:text-orange-400"
+                            ? "text-orange-500 dark:text-orange-400 fill-current"
                             : "text-gray-300 dark:text-gray-600"
                         }`}
                       />
                     );
                   })}
                 </div>
+                {ratingError && (
+                  <p className="text-red-500 text-sm mt-2">{ratingError}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-gray-700 dark:text-gray-300 font-medium mb-1">
-                  تعليق (اختياري)
+                  تعليق 
                 </label>
                 <textarea
                   rows={4}
                   value={comment}
-                  onChange={(e) => setComment(e.target.value)}
+                  onChange={handleCommentChange}
                   className="w-full border border-gray-300 dark:border-gray-600 rounded p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200"
+                  placeholder="اكتب تعليقك هنا..."
                 />
+                {commentError && (
+                  <p className="text-red-500 text-sm mt-2">{commentError}</p>
+                )}
               </div>
 
               <button
