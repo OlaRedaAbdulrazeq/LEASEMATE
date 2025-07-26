@@ -1,14 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import UnitForm from "@/components/UnitForm";
 import AmenitiesForm from "../../../components/AmentiesForm";
 import { apiService } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import {  useStripeService } from '@/services/stripe';
 import Navbar from "@/components/Navbar";
+import SubscriptionPlanCard from '@/components/stripe/SubscriptionPlanCard';
+
+const plans = [
+  {
+    planName: 'basic', // backend key
+    displayName: 'أساسي', // Arabic for display
+    planDescription: 'خطة أساسية: إضافة وحدة واحدة فقط شهريًا',
+    priceLabel: '500 جنيه/شهر',
+    unitLimit: 1,
+  },
+  {
+    planName: 'standard',
+    displayName: 'قياسي',
+    planDescription: 'خطة قياسية: إضافة وحدتين فقط شهريًا',
+    priceLabel: '900 جنيه/شهر',
+    unitLimit: 2,
+  },
+  {
+    planName: 'premium',
+    displayName: 'مميز',
+    planDescription: 'خطة مميزة: إضافة حتى 4 وحدات شهريًا',
+    priceLabel: '1200 جنيه/شهر',
+    unitLimit: 4,
+  },
+];
 
 interface UnitData {
   name: string;
@@ -41,9 +66,13 @@ interface ValidationErrors {
 }
 
 export default function AddUnitPage() {
-  const { user, token } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const { createCheckoutSession } = useStripeService();
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
+  // All form and amenities state hooks at the top
   const [unitData, setUnitData] = useState<UnitData>({
     name: "",
     type: "",
@@ -73,7 +102,20 @@ export default function AddUnitPage() {
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check if user is authorized to create units (landlords only)
+  useEffect(() => {
+    // Always refresh user data on mount to get latest subscription info
+    const doRefresh = async () => {
+      await refreshUser();
+      setLoading(false);
+    };
+    doRefresh();
+  }, []);
+
+  // Conditional rendering after all hooks
+  if (loading) {
+    return <p className="text-center mt-10">جارٍ التحميل...</p>;
+  }
+
   if (user && user.role !== "landlord") {
     return (
       <main className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -84,6 +126,25 @@ export default function AddUnitPage() {
           <p className="text-lg text-gray-600 dark:text-gray-200 font-cairo">
             هذه الصفحة متاحة فقط لأصحاب العقارات
           </p>
+        </div>
+      </main>
+    );
+  }
+
+  // If landlord is not subscribed, show subscribe button
+  if (user && user.role === 'landlord' && !user.isSubscribed) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 py-8 text-gray-900 dark:text-white pt-14">
+        <Navbar/>
+        <Toaster />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+          <h1 className="text-3xl font-bold mb-6 text-center">الاشتراك مطلوب لإضافة وحدة جديدة</h1>
+          <p className="mb-8 text-center text-gray-600 dark:text-gray-300">يرجى الاشتراك في خطة للوصول إلى ميزة إضافة الوحدات العقارية.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {plans.map((plan) => (
+              <SubscriptionPlanCard key={plan.planName} {...plan} />
+            ))}
+          </div>
         </div>
       </main>
     );
@@ -251,6 +312,27 @@ export default function AddUnitPage() {
     } catch (error) {
       console.error("Error saving unit:", error);
       if (error instanceof Error) {
+        // Check for plan limit error from backend
+        if (
+          error.message.includes("الحد الأقصى لعدد الوحدات") ||
+          error.message.includes("تجاوزت الحد الأقصى")
+        ) {
+          toast.error("لقد تجاوزت الحد الأقصى لعدد الوحدات في خطتك. يرجى الترقية أو تجديد الاشتراك.", {
+            duration: 4000,
+            position: "top-center",
+            style: {
+              background: "#EF4444",
+              color: "#fff",
+              fontWeight: "bold",
+              padding: "16px",
+              borderRadius: "8px",
+            },
+          });
+          setTimeout(() => {
+            router.push("/dashboard/stripe/subscribe");
+          }, 2000);
+          return;
+        }
         toast.error(`حدث خطأ أثناء حفظ بيانات الوحدة: ${error.message}`, {
           duration: 4000,
           position: "top-center",
