@@ -6,6 +6,8 @@ const chatController = require('../controllers/chat.controller');
 router.post('/get-or-create', chatController.getOrCreateChat);
 // إنشاء شات جديد مع أول رسالة
 router.post('/create-with-message', chatController.createChatWithFirstMessage);
+// التحقق من وجود محادثة
+router.get('/check/:tenantId/:landlordId/:unitId', chatController.checkChatExists);
 // جلب رسائل محادثة
 router.get('/:chatId/messages', chatController.getMessages);
 // إرسال رسالة
