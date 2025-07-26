@@ -165,7 +165,7 @@ export default function NotificationsPage() {
           <div className="max-w-4xl mx-auto">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">الإشعارات</h1>
+                <h1 className="text-3xl font-bold pt-6 text-gray-900 dark:text-white">الإشعارات</h1>
               </div>
               <div className="flex gap-2">
                 <button
@@ -248,7 +248,7 @@ export default function NotificationsPage() {
                               {notification.title}
                             </h3>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
                                 {new Date(notification.createdAt).toLocaleString('ar-EG', {
                                   day: 'numeric',
                                   month: 'long',
@@ -271,11 +271,11 @@ export default function NotificationsPage() {
                             {notification.message}
                           </p>
                           <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
                               {getNotificationTypeText(notification.type)}
                             </span>
                             {(notification.type === 'MAINTENANCE_REQUEST' || notification.type === 'MAINTENANCE_UPDATE') && notification.senderId && (
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
                                 من: {notification.senderId.name}
                               </span>
                             )}
