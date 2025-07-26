@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { io, Socket } from 'socket.io-client';
+import { useStripeService } from '@/services/stripe';
 
 interface User {
   _id: string;
@@ -11,6 +12,11 @@ interface User {
   phone?: string;
   role: 'landlord' | 'tenant' | 'admin';
   avatarUrl?: string;
+  isSubscribed?: boolean;
+  stripeAccountId?: string;
+  subscriptionPlan?: string;
+  planUnitLimit?: number;
+  planExpiresAt?: Date;
   verificationStatus?: {
     status: 'pending' | 'approved' | 'rejected';
     idVerified?: boolean;
@@ -32,6 +38,7 @@ interface AuthContextType {
   logout: () => void;
   isLoading: boolean;
   socket: Socket | null;
+  refreshUser: () => void; // Add this
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -116,6 +123,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
+  useEffect(() => {
+    if (socket && token) {
+      const handleSubscriptionUpdated = () => {
+        // Fetch latest user data when subscription is updated
+        fetchUserData(token);
+      };
+      socket.on('subscriptionUpdated', handleSubscriptionUpdated);
+      return () => {
+        socket.off('subscriptionUpdated', handleSubscriptionUpdated);
+      };
+    }
+  }, [socket, token]);
+
   const fetchUserData = async (authToken: string) => {
     try {
       const response = await fetch('http://localhost:5000/api/users/me', {
@@ -131,10 +151,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(userData);
         // connectWebSocket(userData._id); // 🧠 Connect after user loads - Moved to useEffect
       } else {
+        console.error('❌ Failed to fetch user data:', response.status);
         localStorage.removeItem('leasemate_token');
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('❌ Error fetching user data:', error);
       localStorage.removeItem('leasemate_token');
     }
   };
@@ -157,8 +178,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshUser = () => {
+    if (token) fetchUserData(token);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading, socket }}>
+    <AuthContext.Provider value={{ user, token, login, logout, isLoading, socket, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
