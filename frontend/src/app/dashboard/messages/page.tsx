@@ -1,6 +1,9 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
+import { useTheme } from "../../../contexts/ThemeContext";
+import { useMessages } from "../../../contexts/MessagesContext";
+import { useSearchParams, useRouter } from "next/navigation";
 import io from 'socket.io-client';
 import axios from 'axios';
 
@@ -28,7 +31,11 @@ const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000', {
 });
 
 export default function MessagesPage() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  const { theme } = useTheme();
+  const { resetUnreadCount, updateUnreadCount } = useMessages();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +43,23 @@ export default function MessagesPage() {
   const [text, setText] = useState('');
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // إعادة تعيين عداد الرسائل غير المقروءة عند فتح الصفحة
+  useEffect(() => {
+    if (user) {
+      resetUnreadCount();
+    }
+  }, [user, resetUnreadCount]);
+
+  // تحديث العداد عند تغيير المحادثات
+  useEffect(() => {
+    if (chats.length > 0) {
+      const totalUnread = chats.reduce((total: number, chat: any) => {
+        return total + (chat.unreadCount || 0);
+      }, 0);
+      updateUnreadCount(totalUnread);
+    }
+  }, [chats, updateUnreadCount]);
 
   useEffect(() => {
     if (!user) return;
@@ -47,8 +71,17 @@ export default function MessagesPage() {
       .then((data) => {
         setChats(data);
         setLoading(false);
+        
+        // التحقق من وجود chatId في query parameters
+        const chatIdFromUrl = searchParams.get('chatId');
+        if (chatIdFromUrl) {
+          const targetChat = data.find((chat: Chat) => chat._id === chatIdFromUrl);
+          if (targetChat) {
+            setSelectedChat(targetChat);
+          }
+        }
       });
-  }, [user]);
+  }, [user, searchParams]);
 
   // جلب رسائل المحادثة عند اختيار محادثة
   useEffect(() => {
@@ -73,7 +106,10 @@ export default function MessagesPage() {
             : `http://localhost:5000/api/chat/tenant/${user._id}`;
           fetch(url)
             .then((res) => res.json())
-            .then((data) => setChats(data));
+            .then((data) => {
+              setChats(data);
+              // تحديث المحادثات فقط، العداد سيتم تحديثه تلقائياً من useEffect السابق
+            });
         });
     }
   }, [selectedChat, user]);
@@ -185,18 +221,31 @@ export default function MessagesPage() {
     setText('');
   };
 
+  // التحقق من حالة التحميل أولاً
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">جاري تحميل المحادثات...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // التحقق من تسجيل الدخول بعد انتهاء التحميل
   if (!user) {
-    return <div className="p-8 text-center">غير مصرح لك بعرض هذه الصفحة</div>;
+    return <div className="p-8 text-center dark:text-white"></div>;
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'w-1/3 min-w-[260px] max-w-xs' : 'w-0 min-w-0 max-w-0'} h-screen sticky top-0 z-20 bg-white border-l overflow-y-auto`}>
-        <div className="flex items-center justify-between mb-4 sticky top-0 bg-white z-30 p-2 border-b">
-          <h2 className="text-xl font-bold">المحادثات</h2>
+      <div className={`transition-all duration-300 ${sidebarOpen ? 'w-1/3 min-w-[260px] max-w-xs' : 'w-0 min-w-0 max-w-0'} h-screen sticky top-0 z-20 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 overflow-y-auto`}>
+        <div className="flex items-center justify-between mb-4 sticky top-0 bg-white dark:bg-gray-800 z-30 p-2 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">المحادثات</h2>
           <button
-            className="p-1 rounded-full hover:bg-orange-100 transition"
+            className="p-1 rounded-full hover:bg-orange-100 dark:hover:bg-orange-900 transition"
             onClick={() => setSidebarOpen(false)}
             aria-label="إخفاء القائمة"
           >
@@ -205,32 +254,37 @@ export default function MessagesPage() {
         </div>
         {sidebarOpen && (
           loading ? (
-            <div>جاري التحميل...</div>
+            <div className="p-4 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
+              <div className="text-gray-600 dark:text-gray-400">جاري تحميل المحادثات...</div>
+            </div>
           ) : chats.length === 0 ? (
-            <div>لا توجد محادثات</div>
+            <div className="p-4 text-gray-600 dark:text-gray-400">لا توجد محادثات</div>
           ) : (
             <ul>
               {chats.map((chat) => (
                 <li
                   key={chat._id}
                   className={`p-3 rounded-lg mb-2 cursor-pointer transition-colors
-                    ${selectedChat?._id === chat._id ? 'bg-orange-100 text-orange-900 font-bold' : 'bg-white'}
-                    hover:bg-orange-50`}
+                    ${selectedChat?._id === chat._id 
+                      ? 'bg-orange-100 dark:bg-orange-900 text-orange-900 dark:text-orange-100 font-bold' 
+                      : 'bg-white dark:bg-gray-700 hover:bg-orange-50 dark:hover:bg-orange-900/20'}
+                    border border-gray-200 dark:border-gray-600`}
                   onClick={() => setSelectedChat(chat)}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="font-bold truncate">{chat.unit?.name}</div>
+                    <div className="font-bold truncate text-gray-900 dark:text-white">{chat.unit?.name}</div>
                     {chat.unreadCount > 0 && chat.lastMessageSenderId !== user._id && (
                       <span className="ml-2 bg-orange-500 text-white rounded-full px-2 py-0.5 text-xs font-bold">
                         {chat.unreadCount}
                       </span>
                     )}
                   </div>
-                  <div className="text-sm text-gray-600 truncate">
+                  <div className="text-sm text-gray-600 dark:text-gray-300 truncate">
                     {user.role === 'landlord' ? `من: ${chat.tenant?.name}` : `مع: ${chat.landlord?.name}`}
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">{chat.lastMessageAt ? new Date(chat.lastMessageAt).toLocaleString() : ""}</div>
-                  <div className="text-sm mt-1 truncate">{chat.lastMessage}</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{chat.lastMessageAt ? new Date(chat.lastMessageAt).toLocaleString() : ""}</div>
+                  <div className="text-sm mt-1 truncate text-gray-700 dark:text-gray-300">{chat.lastMessage}</div>
                 </li>
               ))}
             </ul>
@@ -242,32 +296,57 @@ export default function MessagesPage() {
         {/* زر إظهار السايدبار عند الإخفاء */}
         {!sidebarOpen && (
           <button
-            className="absolute top-4 right-4 z-30 p-2 rounded-full bg-orange-100 hover:bg-orange-200 shadow"
+            className="absolute top-4 right-4 z-30 p-2 rounded-full bg-orange-100 dark:bg-orange-900 hover:bg-orange-200 dark:hover:bg-orange-800 shadow"
             onClick={() => setSidebarOpen(true)}
             aria-label="إظهار القائمة"
           >
-            <svg className="w-6 h-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            <svg className="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </button>
         )}
         {selectedChat ? (
           <div className="flex flex-col h-full w-full">
             {/* عنوان المحادثة ثابت */}
-            <div className="px-6 py-4 border-b bg-white shadow-sm flex items-center justify-between sticky top-0 z-10">
-              <h3 className="text-lg font-bold text-orange-700">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between sticky top-0 z-10">
+              <h3 className="text-lg font-bold text-orange-700 dark:text-orange-400">
                 {user.role === 'landlord'
                   ? `محادثة مع المستأجر: ${selectedChat.tenant?.name} - الوحدة: ${selectedChat.unit?.name}`
                   : `محادثة مع المالك: ${selectedChat.landlord?.name} - الوحدة: ${selectedChat.unit?.name}`}
               </h3>
+              {/* زر العودة للوحة التحكم */}
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="group relative p-2 rounded-full bg-orange-100 dark:bg-orange-900 hover:bg-orange-200 dark:hover:bg-orange-800 transition-all duration-200 shadow-md"
+                aria-label="العودة للوحة التحكم"
+              >
+                <svg 
+                  className="w-6 h-6 text-orange-600 dark:text-orange-400 transition-transform group-hover:scale-110" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M10 19l-7-7m0 0l7-7m-7 7h18" 
+                  />
+                </svg>
+                {/* Tooltip */}
+                <div className="absolute top-1/2 left-full ml-2 transform -translate-y-1/2 px-3 py-1 bg-orange-500 dark:bg-orange-600 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+                  العودة للوحة التحكم
+                  <div className="absolute top-1/2 right-full transform -translate-y-1/2 w-0 h-0 border-t-4 border-b-4 border-r-4 border-transparent border-r-orange-500 dark:border-r-orange-600"></div>
+                </div>
+              </button>
             </div>
             {/* الرسائل */}
-            <div className="flex-1 flex flex-col overflow-y-auto bg-gradient-to-br from-white to-orange-50 p-4 space-y-2 scrollbar-thin scrollbar-thumb-orange-200 scrollbar-track-orange-50">
+            <div className="flex-1 flex flex-col overflow-y-auto bg-gradient-to-br from-white to-orange-50 dark:from-gray-900 dark:to-gray-800 p-4 space-y-2 scrollbar-thin scrollbar-thumb-orange-200 dark:scrollbar-thumb-orange-600 scrollbar-track-orange-50 dark:scrollbar-track-gray-700">
               {messages.map((msg, idx) => (
                 <div key={msg._id || idx} className={`flex ${msg.sender === user._id ? 'justify-end' : 'justify-start'}`}>
                   <div
                     className={`relative max-w-[75%] px-4 py-2 rounded-2xl shadow-md text-base break-words
                       ${msg.sender === user._id
                         ? 'bg-orange-500 text-white rounded-br-md rounded-tl-2xl'
-                        : 'bg-white text-gray-800 border border-orange-100 rounded-bl-md rounded-tr-2xl'}
+                        : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-orange-100 dark:border-orange-600 rounded-bl-md rounded-tr-2xl'}
                     `}
                     style={{
                       borderBottomRightRadius: msg.sender === user._id ? '0.5rem' : '1rem',
@@ -275,30 +354,30 @@ export default function MessagesPage() {
                     }}
                   >
                     {msg.text}
-                    <div className={`text-xs mt-1 ${msg.sender === user._id ? 'text-orange-100' : 'text-gray-400'}`}>{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}</div>
+                    <div className={`text-xs mt-1 ${msg.sender === user._id ? 'text-orange-100' : 'text-gray-400 dark:text-gray-500'}`}>{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}</div>
                   </div>
                 </div>
               ))}
               <div ref={messagesEndRef} />
             </div>
             {/* شريط الإدخال */}
-            <form onSubmit={handleSend} className="p-3 flex gap-2 border-t bg-white sticky bottom-0 z-10">
+            <form onSubmit={handleSend} className="p-3 flex gap-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky bottom-0 z-10">
               <input
-                className="flex-1 border border-orange-200 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400 transition text-base bg-orange-50"
+                className="flex-1 border border-orange-200 dark:border-orange-600 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-500 transition text-base bg-orange-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 value={text}
                 onChange={e => setText(e.target.value)}
                 placeholder="اكتب رسالتك..."
               />
               <button
                 type="submit"
-                className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-full font-bold shadow transition"
+                className="bg-orange-500 hover:bg-orange-600 dark:hover:bg-orange-700 text-white px-6 py-2 rounded-full font-bold shadow transition"
               >
                 إرسال
               </button>
             </form>
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">اختر محادثة لعرض الرسائل</div>
+          <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">اختر محادثة لعرض الرسائل</div>
         )}
       </div>
     </div>
