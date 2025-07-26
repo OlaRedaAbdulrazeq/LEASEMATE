@@ -131,7 +131,7 @@ export default function LeaveReviewPage() {
        <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
       <main className="pt-24 px-4">
-        <div className="max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-10">
           <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white text-center">
             اترك مراجعة
           </h1>
