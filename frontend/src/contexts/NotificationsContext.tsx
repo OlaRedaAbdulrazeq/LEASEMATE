@@ -231,6 +231,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         router.push(notification.link);
       }
       // If already reviewed, do nothing
+    } else if (notification.type === 'UNIT_REJECTED') {
+      // For unit rejection, navigate to unit management page
+      if (notification.link) {
+        router.push(notification.link);
+      } else {
+        router.push('/dashboard');
+      }
     } else if (notification.link) {
       // Use the provided link
       router.push(notification.link);
