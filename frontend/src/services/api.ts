@@ -712,6 +712,25 @@ if (params.governorate)
       },
     });
   }
+
+  // Admin: Get all subscriptions
+  async getSubscriptions(token: string) {
+    return this.request<{ subscriptions: any[] }>("/admin/subscriptions", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  // Admin: Refund subscription
+  async refundSubscription(subscriptionId: string, token: string) {
+    return this.request<{ message: string; subscription: any }>(`/admin/subscriptions/${subscriptionId}/refund`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
 }
 
 export const apiService = new ApiService();
