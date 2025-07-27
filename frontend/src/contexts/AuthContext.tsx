@@ -109,11 +109,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  // Remove or increase polling interval to reduce backend load
   useEffect(() => {
     if (token) {
+      // Poll every 10 minutes instead of 10 seconds, or remove polling entirely
       const interval = setInterval(() => {
         fetchUserData(token);
-      }, 10000); // Poll every 10s
+      }, 10 * 60 * 1000); // 10 minutes
       return () => clearInterval(interval);
     }
   }, [token]);
