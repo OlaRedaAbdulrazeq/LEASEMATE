@@ -86,7 +86,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (token && user?.role === 'admin') {
       fetchUsers();
-      fetchAbusiveUsers();
     }
   }, [token, user]);
 
@@ -126,9 +125,28 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch abusive users
+  const fetchAbusiveUsers = async () => {
+    if (!token) return;
+    setLoadingAbusive(true);
+    try {
+      const res = await apiService.getAbusiveUsers(token);
+      setAbusiveUsers(res.users || []);
+    } catch (err) {
+      setAbusiveUsers([]);
+    } finally {
+      setLoadingAbusive(false);
+    }
+  };
+
+  // Fetch data based on active tab
   useEffect(() => {
-    if (activeTab === 'images' && token && user?.role === 'admin') {
+    if (!token || user?.role !== 'admin') return;
+    
+    if (activeTab === 'images') {
       fetchPendingImages();
+    } else if (activeTab === 'abusive') {
+      fetchAbusiveUsers();
     }
   }, [activeTab, token, user]);
 
@@ -222,19 +240,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchAbusiveUsers = async () => {
-    if (!token) return;
-    setLoadingAbusive(true);
-    try {
-      const res = await apiService.getAbusiveUsers(token);
-      setAbusiveUsers(res.users || []);
-    } catch (err) {
-      setAbusiveUsers([]);
-    } finally {
-      setLoadingAbusive(false);
-    }
-  };
-
   const handleBlockUser = async (userId: string) => {
     if (!token) return;
     setBlockLoadingId(userId);
@@ -268,9 +273,9 @@ export default function AdminDashboard() {
   const totalPages = Math.ceil(filteredNonAdminUsers.length / usersPerPage);
 
   // Stats for dashboard
-  const pendingCount = users.filter(u => u.verificationStatus?.status === 'pending').length;
-  const approvedCount = users.filter(u => u.verificationStatus?.status === 'approved').length;
-  const rejectedCount = users.filter(u => u.verificationStatus?.status === 'rejected').length;
+  const pendingCount = users.filter(u => u.verificationStatus && u.verificationStatus.status === 'pending').length;
+  const approvedCount = users.filter(u => u.verificationStatus && u.verificationStatus.status === 'approved').length;
+  const rejectedCount = users.filter(u => u.verificationStatus && u.verificationStatus.status === 'rejected').length;
   const totalUsers = users.length;
   const totalLandlords = users.filter(u => u.role === 'landlord').length;
   const totalTenants = users.filter(u => u.role === 'tenant').length;
