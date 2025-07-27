@@ -73,6 +73,21 @@ exports.createReview = async (req, res) => {
       abusive = analysis.abusive;
     }
 
+    // إذا كان التعليق مسيء، زيادة العداد للمراجع
+    if (abusive) {
+      await User.findByIdAndUpdate(reviewerId, { $inc: { abusiveCommentsCount: 1 } });
+      // إرسال إشعار تحذيري (يمكنك تعديل نص الرسالة حسب الحاجة)
+      const notificationService = require('../services/notification.service');
+      await notificationService.createNotification({
+        userId: reviewerId,
+        senderId: null,
+        type: 'ABUSIVE_COMMENT_WARNING',
+        title: 'تحذير من التعليقات المسيئة',
+        message: 'لقد قمت بكتابة تعليق مسيء. تكرار ذلك قد يؤدي إلى حظرك من المنصة.',
+        isRead: false
+      });
+    }
+
     // إنشاء التقييم
     const review = await Review.create({
       leaseId,

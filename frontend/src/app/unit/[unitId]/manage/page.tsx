@@ -120,9 +120,15 @@ export default function ManageUnitPage() {
               <div className="mb-2">السعر الشهري: {unit.pricePerMonth} جنيه</div>
               <div className="mb-2">عدد الغرف: {unit.numRooms}</div>
               <div className="mb-2">المساحة: {unit.space} متر</div>
-              <div className="mb-2">الحالة: {unit.status === 'available' ? 'نشط' : unit.status === 'booked' ? 'محجوز' : 'تحت الصيانة'}</div>
+              <div className="mb-2">الحالة: {unit.status === 'available' ? 'نشط' : unit.status === 'booked' ? 'محجوز' : unit.status === 'rejected' ? 'مرفوض' : 'تحت الصيانة'}</div>
               <div className="mb-2">نوع الوحدة: {unit.type === 'villa' ? 'فيلا' : 'شقة'}</div>
               <div className="mb-2">مفروش: {unit.isFurnished ? 'نعم' : 'لا'}</div>
+              {unit.status === 'rejected' && unit.rejectionReason && (
+                <div className="mb-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <div className="text-red-800 dark:text-red-200 font-semibold mb-1">سبب الرفض:</div>
+                  <div className="text-red-700 dark:text-red-300">{unit.rejectionReason}</div>
+                </div>
+              )}
             </div>
             <div className="flex gap-4 mt-6">
               {user?.role === "landlord" && (
@@ -132,7 +138,7 @@ export default function ManageUnitPage() {
                     onClick={handleEdit}
                     disabled={showEdit}
                   >
-                    تعديل
+                    إعادة رفع الوحدة
                   </button>
                   <button
                     className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded transition-colors duration-200"
@@ -148,61 +154,84 @@ export default function ManageUnitPage() {
             {showEdit && unit && (
               <form
                 className="mt-8 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 space-y-6 animate-fade-in"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  setError(null);
-                  try {
-                    const token = localStorage.getItem("leasemate_token");
-                    if (!token) throw new Error("لم يتم العثور على التوكن");
-                    const formData = new FormData();
-                    formData.append("name", (e.target as any).name.value);
-                    formData.append("address", (e.target as any).address.value);
-                    formData.append("city", (e.target as any).city.value);
-                    formData.append("governorate", (e.target as any).governorate.value);
-                    formData.append("pricePerMonth", (e.target as any).pricePerMonth.value);
-                    formData.append("numRooms", (e.target as any).numRooms.value);
-                    formData.append("space", (e.target as any).space.value);
-                    formData.append("status", (e.target as any).status.value);
-                    formData.append("type", (e.target as any).type.value);
-                    formData.append("isFurnished", (e.target as any).isFurnished.value);
-                    // مرافق
-                    Object.entries(editAmenities).forEach(([key, value]) => {
-                      formData.append(key, value ? "true" : "false");
-                    });
-                    // صور جديدة
-                    editImages.forEach((file) => {
-                      formData.append("images", file);
-                    });
-                    await fetch(`http://localhost:5000/api/units/${unitId}`, {
-                      method: "PATCH",
-                      headers: {
-                        Authorization: `Bearer ${token}`,
-                      },
-                      body: formData,
-                    });
-                    setShowEdit(false);
-                    setUnit({
-                      ...unit,
-                      name: (e.target as any).name.value,
-                      address: (e.target as any).address.value,
-                      city: (e.target as any).city.value,
-                      governorate: (e.target as any).governorate.value,
-                      pricePerMonth: Number((e.target as any).pricePerMonth.value),
-                      numRooms: Number((e.target as any).numRooms.value),
-                      space: Number((e.target as any).space.value),
-                      status: (e.target as any).status.value,
-                      type: (e.target as any).type.value,
-                      isFurnished: (e.target as any).isFurnished.value === "true",
-                      ...editAmenities,
-                      images: editImages.length > 0 ? [] : unit.images,
-                    });
-                  } catch (err: any) {
-                    setError(err.message || "حدث خطأ أثناء التعديل");
-                  }
-                }}
+                                 onSubmit={async (e) => {
+                   e.preventDefault();
+                   setError(null);
+                   try {
+                     const token = localStorage.getItem("leasemate_token");
+                     if (!token) throw new Error("لم يتم العثور على التوكن");
+                     
+                     // إعداد البيانات للتحديث
+                     const updateData = {
+                       name: (e.target as any).name.value,
+                       address: (e.target as any).address.value,
+                       city: (e.target as any).city.value,
+                       governorate: (e.target as any).governorate.value,
+                       pricePerMonth: Number((e.target as any).pricePerMonth.value),
+                       numRooms: Number((e.target as any).numRooms.value),
+                       space: Number((e.target as any).space.value),
+                       status: (e.target as any).status.value,
+                       type: (e.target as any).type.value,
+                       isFurnished: (e.target as any).isFurnished.value === "true",
+                       ...editAmenities,
+                     };
+
+                     // إذا كان هناك صور جديدة، استخدم FormData
+                     if (editImages.length > 0) {
+                       const formData = new FormData();
+                       Object.entries(updateData).forEach(([key, value]) => {
+                         formData.append(key, String(value));
+                       });
+                       editImages.forEach((file) => {
+                         formData.append("images", file);
+                       });
+                       
+                       await apiService.updateUnit(unitId, formData, token);
+                     } else {
+                       // إذا لم تكن هناك صور جديدة، استخدم JSON
+                       await apiService.updateUnit(unitId, updateData, token);
+                     }
+
+                     setShowEdit(false);
+                     setEditImages([]);
+                     
+                     // إعادة جلب بيانات الوحدة المحدثة
+                     const updatedUnit = await apiService.getUnitById(unitId, token);
+                     setUnit(updatedUnit);
+                     
+                     // تحديث حالة المرافق المحلية
+                     setEditAmenities({
+                       hasPool: updatedUnit.hasPool,
+                       hasAC: updatedUnit.hasAC,
+                       hasTV: updatedUnit.hasTV,
+                       hasWifi: updatedUnit.hasWifi,
+                       hasKitchenware: updatedUnit.hasKitchenware,
+                       hasHeating: updatedUnit.hasHeating,
+                     });
+                     
+                     if (unit?.status === 'rejected') {
+                       toast.success("تم إعادة رفع الوحدة بنجاح! سيتم مراجعتها من قبل الإدارة.");
+                     } else {
+                       toast.success("تم تحديث الوحدة بنجاح!");
+                     }
+                   } catch (err: any) {
+                     setError(err.message || "حدث خطأ أثناء التعديل");
+                     toast.error(err.message || "حدث خطأ أثناء التعديل");
+                   }
+                 }}
                 encType="multipart/form-data"
               >
-                <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-6">تعديل بيانات الوحدة</h2>
+                <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-6">
+                  {unit.status === 'rejected' ? 'إعادة رفع الوحدة المرفوضة' : 'تعديل بيانات الوحدة'}
+                </h2>
+                {unit.status === 'rejected' && (
+                  <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                    <div className="text-orange-800 dark:text-orange-200 font-semibold mb-2">ملاحظة مهمة:</div>
+                    <div className="text-orange-700 dark:text-orange-300">
+                      عند رفع صور جديدة، سيتم إعادة إرسال الوحدة للمراجعة من قبل الإدارة.
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block mb-2 text-gray-700 dark:text-gray-200 font-semibold">اسم الوحدة <span className="text-red-500">*</span></label>
@@ -286,7 +315,9 @@ export default function ManageUnitPage() {
                 <div className="mt-8">
                   <AmenitiesForm data={editAmenities} onChange={setEditAmenities} unitType={unit.type} />
                 </div>
-                <button type="submit" className="mt-8 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all duration-200 w-full text-lg tracking-wide">حفظ التعديلات</button>
+                <button type="submit" className="mt-8 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all duration-200 w-full text-lg tracking-wide">
+                  {unit.status === 'rejected' ? 'إعادة رفع الوحدة للمراجعة' : 'حفظ التعديلات'}
+                </button>
                 <button type="button" className="mt-3 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-bold py-3 px-8 rounded-xl shadow transition-all duration-200 w-full text-lg" onClick={() => setShowEdit(false)}>إلغاء</button>
                 {error && <div className="mt-4 text-red-600 dark:text-red-400 text-center font-bold">{error}</div>}
               </form>

@@ -38,7 +38,7 @@ export default function AboutPage() {
             يضم فريقنا نخبة من المطورين وخبراء العقارات وخدمة العملاء، يعملون
             معًا لتقديم أفضل الحلول الرقمية وتوفير دعم متواصل للمستخدمين.
           </p>
-          <div className="mt-10 text-center text-orange font-bold text-2xl">
+          <div className="mt-10 text-center text-orange font-bold text-2xl dark:text-white">
             <span className="text-orange-600 font-bold">LeaseMate</span> -
             مستقبل الإيجار الذكي يبدأ من هنا.
           </div>

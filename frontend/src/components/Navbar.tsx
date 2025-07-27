@@ -2,21 +2,40 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import Logo from './Logo';
-import { Bell } from 'lucide-react';
+import { Bell, Mail } from 'lucide-react';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { useMessages } from '@/contexts/MessagesContext';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, socket } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { notifications, loading } = useNotifications();
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const { unreadCount: newMessagesCount, incrementUnreadCount, resetUnreadCount } = useMessages();
+
+  useEffect(() => {
+    if (!socket || !user) return;
+    const handleNewChatMessage = (msg: any) => {
+      incrementUnreadCount();
+    };
+    socket.on('newChatMessage', handleNewChatMessage);
+
+    return () => {
+      socket.off('newChatMessage', handleNewChatMessage);
+    };
+  }, [socket, user, incrementUnreadCount]);
+
+  const handleMessagesClick = () => {
+    resetUnreadCount();
+    router.push('/dashboard/messages');
+  };
 
   const handleThemeToggle = () => {
     toggleTheme();
@@ -29,11 +48,11 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between whitespace-nowrap bg-white/70 px-6 sm:px-10  backdrop-blur-sm shadow-sm">
+      <header suppressHydrationWarning={true} className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between whitespace-nowrap bg-white/70 px-6 sm:px-10  backdrop-blur-sm shadow-sm">
         <div className="flex items-center gap-3 text-gray-900 pl-2">
           {" "}
           {/* Added pl-2 for spacing */}
-          <Logo size={100} />
+          <Logo size={100} user={user} />
         </div>
 
         <nav
@@ -115,7 +134,21 @@ export default function Navbar() {
           ) : null}
         </nav>
          {/* Notification Bell */}
-        <div className="mx-5">
+        <div className="mx-5 flex gap-4">
+          {user && (user.role === 'landlord' || user.role === 'tenant') && (
+            <button
+              className="relative"
+              onClick={handleMessagesClick}
+              aria-label="الرسائل"
+            >
+              <Mail className="w-6 h-6 text-gray-700 hover:text-orange-600" />
+              {newMessagesCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-orange-500 text-white rounded-full px-2 text-xs">
+                  {newMessagesCount}
+                </span>
+              )}
+            </button>
+          )}
           {user && (
             <Link href="/notifications" className="relative">
               <Bell className="w-6 h-6 text-gray-700 hover:text-orange-600" />
@@ -126,6 +159,7 @@ export default function Navbar() {
               )}
             </Link>
           )}
+          
         </div>
 
         <div className="flex items-center gap-4">
@@ -134,6 +168,7 @@ export default function Navbar() {
             onClick={handleThemeToggle}
             className="flex cursor-pointer items-center justify-center rounded-full h-10 w-10 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
             aria-label="Toggle theme"
+            suppressHydrationWarning
           >
             {theme === "light" ? (
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -157,6 +192,7 @@ export default function Navbar() {
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="flex cursor-pointer items-center justify-center rounded-full h-10 w-10 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
                 aria-label="User Profile"
+                suppressHydrationWarning
               >
                 {user.avatarUrl ? (
                   <img
@@ -240,6 +276,7 @@ export default function Navbar() {
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="md:hidden flex cursor-pointer items-center justify-center rounded-lg h-10 w-10 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
             aria-label="Toggle menu"
+            suppressHydrationWarning
           >
             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
               <path

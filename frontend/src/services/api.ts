@@ -45,7 +45,10 @@ export interface Unit {
   numRooms: number;
   space: number;
   type: "villa" | "apartment";
-  images: string[];
+  images: Array<{
+    url: string;
+    status: "pending" | "approved" | "rejected";
+  }>;
   ownerId:
     | string
     | {
@@ -66,7 +69,8 @@ export interface Unit {
   hasWifi: boolean;
   hasKitchenware: boolean;
   hasHeating: boolean;
-  status: "available" | "booked" | "under maintenance" | "approved" | "pending";
+  status: "available" | "booked" | "under maintenance" | "approved" | "pending" | "rejected";
+  rejectionReason?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -124,16 +128,26 @@ class ApiService {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        let errorData = {};
+        try {
+          const responseText = await response.text();
+          if (responseText) {
+            errorData = JSON.parse(responseText);
+          }
+        } catch (parseError) {
+          console.error("Failed to parse error response:", parseError);
+        }
+        
         console.error("API Error Response:", {
           status: response.status,
           statusText: response.statusText,
           errorData,
         });
+        
         throw new Error(
-          errorData.message ||
-            errorData.error ||
-            `HTTP error! status: ${response.status}`
+          (errorData as any).message ||
+            (errorData as any).error ||
+            `HTTP error! status: ${response.status} - ${response.statusText}`
         );
       }
 
@@ -729,7 +743,55 @@ if (params.governorate)
       headers: {
         Authorization: `Bearer ${token}`,
       },
+    });}
+  // Check if chat exists between tenant and landlord for a specific unit
+  async checkChatExists(tenantId: string, landlordId: string, unitId: string) {
+    return this.request<{
+      exists: boolean;
+      chatId: string | null;
+      hasMessages: boolean;
+      messageCount: number;
+    }>(`/chat/check/${tenantId}/${landlordId}/${unitId}`, {
+      method: "GET",
     });
+  }
+
+  // إعادة إرسال الوحدة المرفوضة للمراجعة
+  async resubmitRejectedUnit(unitId: string, token: string) {
+    return this.request<{ status: string; data: any; message: string }>(
+      `/units/${unitId}/resubmit`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  }
+
+  async updateUnit(unitId: string, data: FormData | any, token: string): Promise<Unit> {
+    const options: RequestInit = {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    if (data instanceof FormData) {
+      options.body = data;
+    } else {
+      options.headers = {
+        ...options.headers,
+        "Content-Type": "application/json",
+      };
+      options.body = JSON.stringify(data);
+    }
+
+    const response = await this.request<{ status: string; data: { unit: Unit } }>(
+      `/units/${unitId}`,
+      options
+    );
+    return response.data.unit;
   }
 }
 

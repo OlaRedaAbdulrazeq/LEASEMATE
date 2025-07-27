@@ -21,7 +21,7 @@ exports.createBookingRequest = async (req, res) => {
       });
     }
 
-    const { unitId, message } = req.body;
+    const { unitId, message, startDate, endDate, durationMonths, price } = req.body;
     
     // التحقق من unitId
     if (!unitId) {
@@ -41,7 +41,11 @@ exports.createBookingRequest = async (req, res) => {
     const newRequest = new BookingRequest({
       tenantId: req.user._id,
       unitId,
-      message: message || ""
+      message: message || "",
+      startDate,
+      endDate,
+      durationMonths,
+      price
     });
 
     await newRequest.save();
@@ -104,7 +108,7 @@ exports.getLandlordBookings = async (req, res) => {
     // جلب جميع طلبات الحجز المعلقة
     const bookings = await BookingRequest.find({ status: "pending" })
       .populate("tenantId", "name email phone")
-      .populate("unitId", "name ownerId")
+      .populate("unitId", "name ownerId pricePerMonth securityDeposit")
       .lean();
 
     // console.log("All pending bookings:", bookings.length);
@@ -138,5 +142,61 @@ exports.getLandlordBookings = async (req, res) => {
       error: err.message,
       stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
+  }
+};
+
+// حذف طلب الإيجار من قبل المالك مع إشعار المستأجر
+exports.rejectBookingRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const booking = await BookingRequest.findById(id).populate("tenantId").populate("unitId");
+    if (!booking) {
+      return res.status(404).json({ message: "Booking request not found" });
+    }
+    // التأكد أن المالك هو صاحب الوحدة
+    if (!booking.unitId || String(booking.unitId.ownerId) !== String(req.user._id)) {
+      return res.status(403).json({ message: "Unauthorized: You are not the owner of this unit." });
+    }
+    // حفظ بيانات المستأجر قبل الحذف
+    const tenantId = booking.tenantId._id;
+    const unitName = booking.unitId.name;
+    await booking.deleteOne();
+    // إرسال إشعار بالرفض للمستأجر
+    const notification = await notificationService.createNotification({
+      userId: tenantId,
+      senderId: req.user._id,
+      type: 'BOOKING_REJECTED',
+      title: `تم رفض طلب الإيجار للوحدة ${unitName}`,
+      message: `تم رفض طلب الإيجار الخاص بك للوحدة ${unitName} من قبل المالك.`,
+      link: '/dashboard/booking-requests',
+      isRead: false
+    });
+    // إرسال الإشعار عبر سوكيت
+    const io = req.app.get('io');
+    if (io) {
+      const populatedNotification = await notification.populate('senderId', 'name avatarUrl');
+      io.to(tenantId.toString()).emit('newNotification', populatedNotification);
+    }
+    res.status(200).json({ message: "Booking request rejected and deleted, notification sent." });
+  } catch (err) {
+    console.error("Reject booking request error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// جلب كل طلبات الحجز للمستخدم الحالي على وحدة معينة
+exports.getMyBookingRequestsByUnit = async (req, res) => {
+  try {
+    const { unitId } = req.params;
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+    const requests = await BookingRequest.find({
+      tenantId: req.user._id,
+      unitId: unitId
+    });
+    res.json({ status: "success", data: { requests } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };

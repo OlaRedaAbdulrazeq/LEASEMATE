@@ -50,6 +50,8 @@ app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }), requir
 
 // ✅ After webhook, now parse JSON for other routes
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
+
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
@@ -60,6 +62,7 @@ app.use("/api/booking", require('./routes/booking.route'));
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use('/api/chat', require('./routes/chat.route'));
 
 app.use((error, req, res, next) => {
   res.status(error.statusCode || 500).json({

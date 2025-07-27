@@ -1,15 +1,14 @@
-import Groq from "groq-sdk";
-
+const Groq = require("groq-sdk");
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
-
+module.exports = { analyzeReviewWithOpenAI };
 /**
  * Analyze a review comment using Groq's Llama-4 model.
  * @param {string} comment
  * @returns {Promise<{ sentiment: string|null, abusive: boolean, keywords: string[] }>}
  */
-export async function analyzeReviewWithOpenAI(comment) {
+async function analyzeReviewWithOpenAI(comment) {
   try {
     const completion = await groq.chat.completions.create({
       model: "meta-llama/llama-4-scout-17b-16e-instruct",

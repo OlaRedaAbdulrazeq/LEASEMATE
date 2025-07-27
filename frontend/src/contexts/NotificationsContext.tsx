@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import { useRouter } from 'next/navigation';
 
 export interface Notification {
+  index?:number;
   _id: string;
   title: string;
   message: string;
@@ -12,8 +13,8 @@ export interface Notification {
   link?: string;
   leaseId?: string;
   maintenanceRequestId?: string;
-  landlordId?: string;
-  tenantId?: string;
+  landlordId?:string;
+  tenantId?:string;
   isRead: boolean;
   createdAt: string;
   senderId?: {
@@ -126,6 +127,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     }, 2000);
 
     return () => {
+      console.log('🔌 Cleaning up notification listener');
       socket.off("newNotification", handleNewNotification);
       clearTimeout(fallbackTimeout);
     };
@@ -148,39 +150,52 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       .catch(console.error);
   };
 
-  const markSingleAsRead = async (id: string) => {
+  const markSingleAsRead = (id: string) => {
     if (!token) return;
-    
+
+    fetch(`${BASE_URL}/api/notifications/${id}/read`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to mark as read");
+        return res.json();
+      })
+      .then(() => {
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+        );
+      })
+      .catch(console.error);
+  };
+
+  // Helper to check if review exists for a lease and reviewee
+  const checkReviewExists = async (leaseId?: string, revieweeId?: string) => {
+    if (!leaseId || !revieweeId || !token) return false;
     try {
-      const response = await fetch(`${BASE_URL}/api/notifications/${id}/read`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        credentials: "include"
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to mark notification as read: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
-      
-      return data;
+      const res = await fetch(
+        `${BASE_URL}/api/reviews/check/${leaseId}/${revieweeId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await res.json();
+      return data.exists;
     } catch (error) {
-      console.error('Error marking notification as read:', error);
-      throw error;
+      console.error('Error checking review existence:', error);
+      return false;
     }
   };
 
   const handleNotificationClick = async (notification: Notification) => {
-    if (isProcessingClick) return;
-    
-    setIsProcessingClick(true);
-    try {
-      await markSingleAsRead(notification._id);
+    // Mark notification as read
+          markSingleAsRead(notification._id);
       
       // Don't navigate for these notification types
       if (notification.type === 'REFUND_SUCCESS' || notification.type === 'PAYMENT_SUCCESS') {
@@ -188,32 +203,37 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       
       let targetLink = notification.link || '/dashboard';
-      
-      if (notification.type === 'LEASE_EXPIRED') {
-        if (notification.leaseId && notification.landlordId && notification.tenantId) {
-          const isLandlord = user?._id === notification.landlordId;
-          const isTenant = user?._id === notification.tenantId;
-          
-          if (isLandlord || isTenant) {
-            const revieweeId = isLandlord ? notification.tenantId : notification.landlordId;
-            targetLink = `/leave-review?leaseId=${notification.leaseId}&revieweeId=${revieweeId}`;
-          }
-        }
+
+    // Navigate based on notification type
+    if (notification.type === 'MAINTENANCE_REQUEST' || notification.type === 'MAINTENANCE_UPDATE') {
+      router.push('/dashboard/maintenance-requests');
+    }else if (notification.type === 'LEASE_EXPIRED') {
+      // For LEASE_EXPIRED, check if review already exists
+      // Assume notification.link is the leave-review page with leaseId and tenantId/landlordId
+      const leaseId = notification.leaseId;
+      // Determine revieweeId: if user is tenant, reviewee is landlord; if user is landlord, reviewee is tenant
+      let revieweeId = undefined;
+      if (user?._id && notification.landlordId && notification.tenantId) {
+        revieweeId = user._id === notification.landlordId ? notification.tenantId : notification.landlordId;
       }
-      
-      router.push(targetLink);
-    } catch (error) {
-      console.error('Error handling notification click:', error);
-      
-      // Don't navigate for these notification types even on error
-      if (notification.type === 'REFUND_SUCCESS' || notification.type === 'PAYMENT_SUCCESS') {
-        return;
+      const alreadyReviewed = await checkReviewExists(leaseId, revieweeId);
+      if (!alreadyReviewed && notification.link) {
+        router.push(notification.link);
       }
-      
-      const targetLink = notification.link || '/dashboard';
-      router.push(targetLink);
-    } finally {
-      setIsProcessingClick(false);
+      // If already reviewed, do nothing
+    } else if (notification.type === 'UNIT_REJECTED') {
+      // For unit rejection, navigate to unit management page
+      if (notification.link) {
+        router.push(notification.link);
+      } else {
+        router.push('/dashboard');
+      }
+    } else if (notification.link) {
+      // Use the provided link
+      router.push(notification.link);
+    } else {
+      // Default to dashboard
+      router.push('/dashboard');
     }
   };
 

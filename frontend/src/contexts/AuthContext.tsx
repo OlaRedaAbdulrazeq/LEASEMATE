@@ -29,6 +29,7 @@ interface User {
       birthDate?: string;
     };
   };
+  isBlocked?: boolean;
 }
 
 interface AuthContextType {

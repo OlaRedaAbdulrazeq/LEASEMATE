@@ -8,10 +8,14 @@ const bookingRequestSchema = new mongoose.Schema({
   },
   unitId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Units",
+    ref: "Unit",
     required: true
   },
   message: String,
+  startDate: Date,
+  endDate: Date,
+  durationMonths: Number,
+  price: Number,
   status: {
     type: String,
     enum: ["pending", "accepted", "rejected"],

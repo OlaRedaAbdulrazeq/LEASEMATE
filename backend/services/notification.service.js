@@ -22,7 +22,7 @@ exports.getUserNotifications = async (userId) => {
 exports.getSentNotifications = async (landlordId) => {
   return await Notification.find({ senderId: landlordId })
     .sort({ createdAt: -1 })
-    .populate('userId', 'name avatarUrl')
+    .populate('userId', 'name avatarUrl') // optional: who the message was sent to
     .lean();
 };
 
@@ -48,7 +48,7 @@ exports.deleteNotification = async (id) => {
   return await Notification.findByIdAndDelete(id);
 };
 
-// Get a notification by ID
+// Get a notification by ID (used for security checks)
 exports.getNotificationById = async (id) => {
   return await Notification.findById(id);
 };

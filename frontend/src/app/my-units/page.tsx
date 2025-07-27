@@ -47,22 +47,29 @@ export default function MyUnitsPage() {
             {units.map((unit) => (
               <div key={unit._id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
                 <div className="relative w-full h-48 bg-gray-100 dark:bg-gray-800">
-                  {unit.images && unit.images.length > 0 ? (
+                  {unit.images && unit.images.length > 0 && (
+                    typeof unit.images[0] === "string" ? unit.images[0] : (unit.images[0] as { url?: string }).url
+                  ) ? (
                     <Image
-                      src={unit.images[0]}
+                      src={typeof unit.images[0] === "string" ? unit.images[0] : (unit.images[0] as { url?: string }).url || "/fallback.png"}
                       alt={unit.name}
                       fill
                       className="object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">لا توجد صورة</div>
+                    <Image
+                      src="/fallback.png"
+                      alt="صورة غير متوفرة"
+                      fill
+                      className="object-cover"
+                    />
                   )}
                 </div>
                 <div className="p-4 flex-1 flex flex-col">
                   <h2 className="text-lg font-bold mb-2 truncate">{unit.name}</h2>
                   <div className="text-sm text-gray-600 dark:text-gray-300 mb-1 truncate">{unit.address}</div>
                   <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">{unit.pricePerMonth} جنيه/شهر</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">{unit.status === 'available' ? 'نشط' : unit.status === 'booked' ? 'محجوز' : 'تحت الصيانة'}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">{unit.status === 'available' ? 'نشط' : unit.status === 'booked' ? 'محجوز' : unit.status === 'pending' ? 'قيد المراجعة' : 'تحت الصيانة'}</div>
                   <button
                     className="mt-auto bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition-colors duration-200 w-full"
                     onClick={() => router.push(`/unit/${unit._id}/manage`)}

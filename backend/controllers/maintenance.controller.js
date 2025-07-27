@@ -180,7 +180,7 @@ exports.updateRequestStatus = async (req, res) => {
         senderId: req.user._id,
         userId: request.tenantId,
         title: 'تحديث طلب الصيانة',
-        message: `تم تحديث حالة طلب الصيانة للوحدة ${unit?.name || ''} "${request.title}" إلى: ${statusText}`,
+        message: `تم تحديث حالة طلب الصيانة للوحدة ${unit?.name || ''} بعنوان "${request.title}" إلى: ${statusText}`,
         type: 'MAINTENANCE_UPDATE',
         maintenanceRequestId: request._id,
         link: `/dashboard/maintenance-requests`
