@@ -11,7 +11,7 @@ export default function NotificationsPage() {
   const { user, isLoading } = useAuth();
   const { notifications, loading, markAllAsRead, handleNotificationClick } = useNotifications();
   const router = useRouter();
-  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'support'>('all');
   const [reviewStatus, setReviewStatus] = useState<{ [notificationId: string]: boolean }>({});
 
   // Check review status for LEASE_EXPIRED notifications
@@ -66,7 +66,11 @@ export default function NotificationsPage() {
 
   const filteredNotifications = filter === 'all' 
       ? notifications
-    : notifications.filter(n => !n.isRead);
+    : filter === 'unread'
+    ? notifications.filter(n => !n.isRead)
+    : filter === 'support'
+    ? notifications.filter(n => n.type === 'SUPPORT_MESSAGE_TO_USER' || n.type === 'SUPPORT_MESSAGE_TO_ADMIN')
+    : notifications;
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -103,6 +107,15 @@ export default function NotificationsPage() {
             </svg>
           </div>
         );
+      case 'SUPPORT_MESSAGE_TO_USER':
+      case 'SUPPORT_MESSAGE_TO_ADMIN':
+        return (
+          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+            <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </div>
+        );
       default:
         return (
           <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
@@ -128,6 +141,10 @@ export default function NotificationsPage() {
         return 'طلب حجز جديد';
       case 'UNIT_REJECTED':
         return 'رفض وحدة';
+      case 'SUPPORT_MESSAGE_TO_USER':
+        return 'رسالة دعم من الإدارة';
+      case 'SUPPORT_MESSAGE_TO_ADMIN':
+        return 'رسالة دعم من المستخدم';
       case 'GENERAL':
         return 'إشعار عام';
       default:
@@ -164,6 +181,16 @@ export default function NotificationsPage() {
               >
                 غير المقروءة
               </button>
+              <button
+                onClick={() => setFilter('support')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  filter === 'support'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                رسائل الدعم
+              </button>
               {notifications.some(n => !n.isRead) && (
             <button
               onClick={markAllAsRead}
@@ -183,7 +210,9 @@ export default function NotificationsPage() {
                 </svg>
               </div>
               <p className="text-gray-500 text-lg">
-                {filter === 'all' ? 'لا توجد إشعارات' : 'لا توجد إشعارات غير مقروءة'}
+                {filter === 'all' ? 'لا توجد إشعارات' : 
+                 filter === 'unread' ? 'لا توجد إشعارات غير مقروءة' :
+                 filter === 'support' ? 'لا توجد رسائل دعم' : 'لا توجد إشعارات'}
               </p>
             </div>
             ) : (

@@ -241,7 +241,7 @@ export default function MessagesPage() {
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'w-1/3 min-w-[260px] max-w-xs' : 'w-0 min-w-0 max-w-0'} h-screen sticky top-0 z-20 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 overflow-y-auto`}>
+      <div className={`transition-all duration-300 ${sidebarOpen ? 'w-1/3 min-w-[260px] max-w-xs' : 'w-0 min-w-0 max-w-0'} h-screen sticky top-0 z-20 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 overflow-y-auto scrollbar-thin scrollbar-thumb-orange-200 dark:scrollbar-thumb-orange-600 scrollbar-track-orange-50 dark:scrollbar-track-gray-700`} style={{ scrollbarWidth: 'thin', scrollbarColor: '#f97316 #fef3c7' }}>
         <div className="flex items-center justify-between mb-4 sticky top-0 bg-white dark:bg-gray-800 z-30 p-2 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">المحادثات</h2>
           <button

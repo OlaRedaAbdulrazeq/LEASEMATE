@@ -58,6 +58,7 @@ app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use('/api/chat', require('./routes/chat.route'));
+app.use('/api/support-chat', require('./routes/support-chat.route'));
 
 app.use((error, req, res, next) => {
   res.status(error.statusCode || 500).json({

@@ -238,6 +238,12 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       } else {
         router.push('/dashboard');
       }
+    } else if (notification.type === 'SUPPORT_MESSAGE_TO_USER') {
+      // For support messages to user, navigate to support chat
+      router.push('/dashboard/support-chat');
+    } else if (notification.type === 'SUPPORT_MESSAGE_TO_ADMIN') {
+      // For support messages to admin, navigate to admin dashboard with support tab
+      router.push('/admin/dashboard?tab=support');
     } else if (notification.link) {
       // Use the provided link
       router.push(notification.link);
