@@ -16,6 +16,7 @@ const {
   approveAllUnitImages,
   rejectAllUnitImages,
   resubmitRejectedUnit,
+  canAddUnit,
 } = require("../controllers/unit.controller");
 
 const upload = require("../middlewares/upload.middleware");
@@ -34,6 +35,12 @@ router
     addUnit
   ); // Auth + verification required for creating units
 router.get("/my-units", protect, checkRole("landlord"), getMyUnits);
+router.get(
+  "/can-add",
+  protect,
+  checkRole("landlord"),
+  canAddUnit
+);
 
 router
   .route("/:id")
