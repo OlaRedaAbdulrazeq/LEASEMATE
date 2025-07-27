@@ -274,7 +274,7 @@ const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
             )}
           </div>
 
-          {manager.phone && (
+          {/* {manager.phone && (
             <a
               href={`tel:${manager.phone}`}
               className="text-gray-700 dark:text-gray-200 text-sm hover:text-orange-600 dark:hover:text-orange-400 transition-colors duration-200 flex items-center gap-3 p-2 rounded-lg hover:bg-white dark:hover:bg-gray-900 group"
@@ -292,7 +292,7 @@ const RentSidebarCard: React.FC<RentSidebarCardProps> = ({
                 {manager.phone}
               </span>
             </a>
-          )}
+          )} */}
 
           {manager.email && (
             <a
