@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { apiService } from '@/services/api';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Logo from '@/components/Logo';
 import { Pie } from 'react-chartjs-2';
 import toast, { Toaster } from 'react-hot-toast';
@@ -39,9 +40,12 @@ interface AbusiveUser {
 }
 
 export default function AdminDashboard() {
-  const { user, token, logout, isLoading: authLoading } = useAuth();
+  const { user, token, logout, isLoading: authLoading, socket } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const isDarkMode = theme === 'dark';
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -52,7 +56,11 @@ export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const usersPerPage = 6; // Number of users per page
  
-  const [activeTab, setActiveTab] = useState<'table' | 'dashboard' | 'images' | 'abusive' | 'subscriptions'>('table');
+  const [activeTab, setActiveTab] = useState<'table' | 'dashboard' | 'images' | 'abusive' | 'support'| 'subscriptions'>('table');
+  
+  // Sidebar collapse states
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSupportSidebarCollapsed, setIsSupportSidebarCollapsed] = useState(false);
 
   // State for pending images (now pending units)
   const [pendingUnits, setPendingUnits] = useState<any[]>([]);
@@ -68,7 +76,13 @@ export default function AdminDashboard() {
   const [abusiveUsers, setAbusiveUsers] = useState<AbusiveUser[]>([]);
   const [loadingAbusive, setLoadingAbusive] = useState(false);
   const [blockLoadingId, setBlockLoadingId] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  
+  // Support chat state
+  const [supportChats, setSupportChats] = useState<any[]>([]);
+  const [loadingSupportChats, setLoadingSupportChats] = useState(false);
+  const [selectedSupportChat, setSelectedSupportChat] = useState<any>(null);
+  const [supportMessages, setSupportMessages] = useState<any[]>([]);
+  const [supportText, setSupportText] = useState('');
 
   // State for subscriptions
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
@@ -92,14 +106,46 @@ export default function AdminDashboard() {
         return;
       }
     }
-  }, [user, authLoading, router]);
+    
+    // Handle URL parameters for tab switching
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['table', 'dashboard', 'images', 'abusive', 'support'].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [user?.role, authLoading, router, searchParams]);
 
   useEffect(() => {
     if (token && user?.role === 'admin') {
       fetchUsers();
       fetchAbusiveUsers();
     }
-  }, [token, user]);
+  }, [token, user?.role]);
+
+  const fetchSupportChats = useCallback(async () => {
+    if (!token) return;
+    setLoadingSupportChats(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/support-chat/admin', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      setSupportChats(data || []);
+    } catch (error) {
+      console.error('Error fetching support chats:', error);
+      setSupportChats([]);
+    } finally {
+      setLoadingSupportChats(false);
+    }
+  }, [token]);
+
+  // Fetch support chats when admin loads the page to show unread count
+  useEffect(() => {
+    if (token && user?.role === 'admin') {
+      fetchSupportChats();
+    }
+  }, [token, user?.role, fetchSupportChats]);
 
   const fetchUsers = async () => {
     if (!token) return;
@@ -141,7 +187,7 @@ export default function AdminDashboard() {
     if (activeTab === 'images' && token && user?.role === 'admin') {
       fetchPendingImages();
     }
-  }, [activeTab, token, user]);
+  }, [activeTab, token, user?.role]);
 
   useEffect(() => {
     if (activeTab === 'subscriptions' && token && user?.role === 'admin') {
@@ -305,6 +351,70 @@ export default function AdminDashboard() {
       setRefundLoadingId(null);
     }
   };
+  // Handle new support messages from socket - optimized to prevent unnecessary re-fetches
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewSupportMessage = (msg: any) => {
+      console.log('🟢 Admin received new support message:', msg);
+      
+      // Update messages if we're in the correct chat
+      if (selectedSupportChat && msg.chatId === selectedSupportChat._id) {
+        setSupportMessages(prev => {
+          // Check if message already exists to prevent duplicates
+          const messageExists = prev.some(existingMsg => 
+            existingMsg._id === msg._id || 
+            (existingMsg.sender === msg.senderId && existingMsg.text === msg.text)
+          );
+          
+          if (messageExists) {
+            console.log('🟡 Message already exists, skipping duplicate');
+            return prev;
+          }
+          
+          // Replace optimistic message with real message if it exists
+          const hasOptimistic = prev.some(m => m._id?.startsWith('temp-') && m.text === msg.text && m.sender === msg.senderId);
+          if (hasOptimistic) {
+            console.log('🔄 Replacing optimistic message with real message');
+            return prev.map(m => 
+              m._id?.startsWith('temp-') && m.text === msg.text && m.sender === msg.senderId
+                ? { _id: msg._id, sender: msg.senderId, text: msg.text, createdAt: msg.createdAt }
+                : m
+            );
+          }
+          
+          console.log('✅ Adding new message to admin chat');
+          return [...prev, {
+            _id: msg._id || `temp-${Date.now()}`,
+            sender: msg.senderId,
+            text: msg.text,
+            createdAt: msg.createdAt || new Date().toISOString()
+          }];
+        });
+      }
+      
+      // Update the chat list without full re-fetch to prevent "uploading itself"
+      setSupportChats(prev => {
+        return prev.map(chat => {
+          if (chat._id === msg.chatId) {
+            return {
+              ...chat,
+              lastMessage: msg.text,
+              lastMessageAt: msg.createdAt || new Date().toISOString(),
+              unreadCount: chat.unreadCount + (msg.senderId !== user?._id ? 1 : 0)
+            };
+          }
+          return chat;
+        });
+      });
+    };
+
+    socket.on('newSupportMessage', handleNewSupportMessage);
+
+    return () => {
+      socket.off('newSupportMessage', handleNewSupportMessage);
+    };
+  }, [socket, selectedSupportChat, user?._id]);
 
   const handleBlockUser = async (userId: string) => {
     if (!token) return;
@@ -320,9 +430,106 @@ export default function AdminDashboard() {
     }
   };
 
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
+
+
+  const handleSupportMessageSend = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supportText.trim() || !selectedSupportChat || !token) return;
+    
+    console.log('🟢 Admin sending message:', supportText, 'to chat:', selectedSupportChat._id);
+    
+    try {
+      // Add optimistic message first
+      const optimisticMessage = {
+        _id: `temp-${Date.now()}`,
+        sender: user?._id,
+        text: supportText,
+        createdAt: new Date().toISOString()
+      };
+      setSupportMessages(prev => [...prev, optimisticMessage]);
+      
+      // Send message via Socket.IO (it will save to database and broadcast)
+      if (socket) {
+        socket.emit('sendSupportMessage', {
+          chatId: selectedSupportChat._id,
+          senderId: user?._id,
+          text: supportText
+        });
+      }
+      
+      setSupportText('');
+    } catch (error) {
+      console.error('❌ Error sending admin message:', error);
+      // Remove optimistic message on error
+      setSupportMessages(prev => prev.filter(msg => msg._id !== `temp-${Date.now()}`));
+    }
+  }, [supportText, selectedSupportChat, token, user?._id, socket]);
+
+  const handleSelectSupportChat = useCallback((chat: any) => {
+    console.log('🟢 Admin selecting support chat:', chat._id);
+    setSelectedSupportChat(chat);
+    // Join the support chat room
+    if (socket) {
+      console.log('🟢 Admin joining support chat room:', chat._id);
+      socket.emit('joinSupportChat', chat._id);
+    }
+    // Fetch messages for this chat with retry logic
+    console.log('📨 Admin fetching messages for chat:', chat._id);
+    
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    const fetchMessages = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/api/support-chat/${chat._id}/messages`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📨 Admin fetched messages:', data.length, 'messages');
+          console.log('📝 Messages details:', data.map((m: any) => ({ id: m._id, sender: m.sender, text: m.text.substring(0, 30) })));
+          setSupportMessages(data);
+          
+          // Mark messages as read when opening chat
+          if (token && user?._id) {
+            fetch(`http://localhost:5000/api/support-chat/${chat._id}/read`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ userId: user._id })
+            }).then(() => {
+              console.log('✅ Messages marked as read');
+              // Update unread count in chat list
+              setSupportChats(prev => prev.map(c => 
+                c._id === chat._id ? { ...c, unreadCount: 0 } : c
+              ));
+            }).catch(err => console.error('❌ Error marking messages as read:', err));
+          }
+        } else {
+          console.error('❌ Failed to fetch messages:', response.status);
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(`🔄 Retrying fetch messages (${retryCount}/${maxRetries})...`);
+            setTimeout(fetchMessages, 1000); // Retry after 1 second
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error fetching messages:', error);
+        if (retryCount < maxRetries) {
+          retryCount++;
+          console.log(`🔄 Retrying fetch messages (${retryCount}/${maxRetries})...`);
+          setTimeout(fetchMessages, 1000); // Retry after 1 second
+        }
+      }
+    };
+    
+    fetchMessages();
+  }, [socket, token, user?._id]);
 
   const filteredUsers = users.filter(user => {
     const statusMatch = selectedStatus === 'all' || user.verificationStatus?.status === selectedStatus;
@@ -465,6 +672,20 @@ export default function AdminDashboard() {
                 <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
               </svg>
               <p className="text-sm font-semibold">اشتراكات الملاك</p>
+            </button>
+            <button
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors relative ${activeTab === 'support' ? (isDarkMode ? 'bg-orange-900 text-orange-300 font-semibold' : 'bg-orange-50 text-orange-600 font-semibold') : (isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-stone-100')}`}
+              onClick={() => setActiveTab('support')}
+            >
+              <svg className={`${activeTab === 'support' ? 'text-orange-500' : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
+                <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+              </svg>
+              <p className="text-sm font-semibold">رسائل دعم المستخدمين</p>
+              {supportChats.some(chat => chat.unreadCount > 0) && (
+                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                  {supportChats.reduce((total, chat) => total + (chat.unreadCount || 0), 0)}
+                </span>
+              )}
             </button>
           
           </nav>
@@ -910,6 +1131,194 @@ export default function AdminDashboard() {
                   )}
                 </div>
               </div>
+            ) : activeTab === 'support' ? (
+              <div className="flex h-full bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+                {/* Sidebar for support chats */}
+                <div className={`border-r transition-all duration-300 ${isSupportSidebarCollapsed ? 'w-16' : 'w-1/3'} ${isDarkMode ? 'border-orange-700 bg-gray-800/90' : 'border-orange-200 bg-white/90'} backdrop-blur-xl`}>
+                  <div className={`border-b ${isDarkMode ? 'border-orange-700 bg-gradient-to-r from-gray-800 to-gray-900' : 'border-orange-200 bg-gradient-to-r from-orange-50 to-white'} ${isSupportSidebarCollapsed ? 'p-2' : 'p-6'}`}>
+                    <div className={`flex items-center gap-3 ${isSupportSidebarCollapsed ? 'justify-center' : ''}`}>
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-orange-400 to-orange-600 flex items-center justify-center">
+                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                        </svg>
+                      </div>
+                      {!isSupportSidebarCollapsed && <h2 className={`text-xl font-bold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>رسائل الدعم</h2>}
+                      <button
+                        onClick={() => setIsSupportSidebarCollapsed(!isSupportSidebarCollapsed)}
+                        className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-stone-100'} ${isSupportSidebarCollapsed ? 'absolute top-2 right-2' : 'ml-auto'}`}
+                        title={isSupportSidebarCollapsed ? "توسيع" : "طي"}
+                      >
+                        {isSupportSidebarCollapsed ? (
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div className={`overflow-y-auto h-full ${isSupportSidebarCollapsed ? 'p-1' : 'p-2'}`}>
+                    {loadingSupportChats ? (
+                      <div className={`text-center ${isSupportSidebarCollapsed ? 'p-2' : 'p-6'}`}>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-3"></div>
+                        {!isSupportSidebarCollapsed && <div className="text-gray-600 dark:text-gray-400">جاري التحميل...</div>}
+                      </div>
+                    ) : supportChats.length === 0 ? (
+                      <div className={`text-center ${isSupportSidebarCollapsed ? 'p-2' : 'p-6'}`}>
+                        <div className="text-orange-400 dark:text-orange-300 mb-4">
+                          <svg className={`${isSupportSidebarCollapsed ? 'w-8 h-8' : 'w-16 h-16'} mx-auto`} fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                          </svg>
+                        </div>
+                        {!isSupportSidebarCollapsed && (
+                          <>
+                            <p className="text-gray-600 dark:text-gray-400 font-semibold">لا توجد رسائل دعم</p>
+                            <p className="text-gray-500 dark:text-gray-500 text-sm mt-1">ستظهر هنا عندما يرسل المستخدمون رسائل</p>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      supportChats.map((chat) => (
+                        <div
+                          key={chat._id}
+                          className={`cursor-pointer rounded-xl mb-2 transition-all duration-300 ${
+                            selectedSupportChat?._id === chat._id
+                              ? 'bg-gradient-to-r from-orange-100 to-orange-200 dark:from-orange-900 dark:to-orange-800 shadow-lg'
+                              : 'hover:bg-orange-50 dark:hover:bg-gray-700 hover:shadow-md'
+                          } ${isDarkMode ? 'border border-gray-700' : 'border border-orange-100'} ${isSupportSidebarCollapsed ? 'p-2' : 'p-4'}`}
+                          onClick={() => handleSelectSupportChat(chat)}
+                          title={isSupportSidebarCollapsed ? `${chat.user?.name || 'مستخدم غير معروف'} - ${chat.unreadCount > 0 ? `${chat.unreadCount} رسائل جديدة` : 'لا توجد رسائل جديدة'}` : ""}
+                        >
+                          {isSupportSidebarCollapsed ? (
+                            <div className="flex flex-col items-center">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-400 to-orange-600 flex items-center justify-center mb-1">
+                                <span className="text-white font-bold text-xs">
+                                  {chat.user?.name?.charAt(0) || '?'}
+                                </span>
+                              </div>
+                              {chat.unreadCount > 0 && (
+                                <span className="bg-orange-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold">
+                                  {chat.unreadCount > 9 ? '9+' : chat.unreadCount}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                  {chat.user?.name || 'مستخدم غير معروف'}
+                                </div>
+                                {chat.unreadCount > 0 && (
+                                  <span className="bg-orange-500 text-white rounded-full px-2 py-1 text-xs font-bold">
+                                    {chat.unreadCount}
+                                  </span>
+                                )}
+                              </div>
+                              <div className={`text-sm mb-1 ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`}>
+                                {chat.user?.role === 'landlord' ? 'مالك' : 'مستأجر'}
+                              </div>
+                              <div className={`text-xs mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {chat.lastMessageAt ? new Date(chat.lastMessageAt).toLocaleString() : ''}
+                              </div>
+                              <div className={`text-sm truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                {chat.lastMessage || 'لا توجد رسائل'}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Chat area */}
+                <div className="flex-1 flex flex-col h-full bg-gradient-to-br from-white to-orange-50 dark:from-gray-800 dark:to-gray-900">
+                  {selectedSupportChat ? (
+                    <>
+                      {/* Chat header */}
+                      <div className={`p-6 border-b shrink-0 ${isDarkMode ? 'border-orange-700 bg-gradient-to-r from-gray-800 to-gray-900' : 'border-orange-200 bg-gradient-to-r from-orange-50 to-white'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-orange-400 to-orange-600 flex items-center justify-center">
+                            <span className="text-white font-bold text-lg">
+                              {selectedSupportChat.user?.name?.charAt(0) || '?'}
+                            </span>
+                          </div>
+                          <div>
+                            <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {selectedSupportChat.user?.name || 'مستخدم غير معروف'}
+                            </h3>
+                            <p className={`text-sm ${isDarkMode ? 'text-orange-300' : 'text-orange-600'}`}>
+                              {selectedSupportChat.user?.role === 'landlord' ? 'مالك' : 'مستأجر'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Messages */}
+                      <div className="flex-1 overflow-y-auto p-6 space-y-3 scrollbar-thin scrollbar-thumb-orange-300 scrollbar-track-orange-100 dark:scrollbar-thumb-orange-600 dark:scrollbar-track-gray-800 min-h-0 max-h-full scroll-smooth">
+                        {supportMessages.map((msg, idx) => {
+                          const senderId = typeof msg.sender === 'string' ? msg.sender : msg.sender._id;
+                          return (
+                            <div key={msg._id || idx} className={`flex ${senderId === user?._id ? 'justify-end' : 'justify-start'}`}>
+                              <div
+                                className={`relative max-w-[75%] px-4 py-3 rounded-2xl shadow-md text-base break-words
+                                  ${senderId === user?._id
+                                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white'
+                                    : 'bg-white dark:bg-gray-600 dark:border-orange-500 text-gray-800 dark:text-white'}
+                                `}
+                                style={{
+                                  borderRadius: senderId === user?._id 
+                                    ? '1rem 1rem 0.5rem 1rem' 
+                                    : '1rem 1rem 1rem 0.5rem',
+                                }}
+                              >
+                                {msg.text}
+                                <div className={`text-xs mt-2 ${senderId === user?._id ? 'text-orange-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                                  {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Message input */}
+                      <form onSubmit={handleSupportMessageSend} className={`p-4 border-t ${isDarkMode ? 'border-orange-700 bg-gray-800' : 'border-orange-200 bg-white'} rounded-b-2xl`}>
+                        <div className="flex gap-3">
+                          <input
+                            type="text"
+                            value={supportText}
+                            onChange={(e) => setSupportText(e.target.value)}
+                            placeholder="اكتب رسالتك..."
+                            className={`flex-1 border border-orange-200 dark:border-orange-700 rounded-full px-6 py-3 focus:outline-none focus:ring-2 focus:ring-orange-400 transition text-base bg-orange-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400`}
+                          />
+                          <button
+                            type="submit"
+                            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                          >
+                            إرسال
+                          </button>
+                        </div>
+                      </form>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-orange-400 dark:text-orange-300 mb-6">
+                          <svg className="w-24 h-24 mx-auto" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                          </svg>
+                        </div>
+                        <p className={`text-xl font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>اختر محادثة لعرض الرسائل</p>
+                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`}>اختر محادثة من القائمة على اليسار</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             ) : (
               <>
                 <header className="mb-8">
@@ -1191,4 +1600,4 @@ export default function AdminDashboard() {
       <Toaster position="top-center" />
     </div>
   );
-} 
+}

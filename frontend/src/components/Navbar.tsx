@@ -149,7 +149,8 @@ export default function Navbar() {
               )}
             </button>
           )}
-          {user && (
+          
+          {user && user.role !== 'admin' && (
             <Link href="/notifications" className="relative">
               <Bell className="w-6 h-6 text-gray-700 hover:text-orange-600" />
               {unreadCount > 0 && (
@@ -244,6 +245,15 @@ export default function Navbar() {
                   >
                     الملف الشخصي
                   </Link>
+                  {(user.role === 'landlord' || user.role === 'tenant') && (
+                    <Link
+                      href="/dashboard/support-chat"
+                      className="block px-4 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors font-bold"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      التواصل مع الدعم
+                    </Link>
+                  )}
                   <Link
                     href='/'
                     onClick={handleLogout}
@@ -393,6 +403,15 @@ export default function Navbar() {
                   >
                     الملف الشخصي
                   </Link>
+                  {(user.role === 'landlord' || user.role === 'tenant') && (
+                    <Link
+                      href="/dashboard/support-chat"
+                      className="block text-gray-700 hover:text-orange-600 transition-colors font-bold"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      التواصل مع الدعم
+                    </Link>
+                  )}
                   <button
                     onClick={handleLogout}
                     className="block text-gray-700 hover:text-orange-600 transition-colors font-bold"
