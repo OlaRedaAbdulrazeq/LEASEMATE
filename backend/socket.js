@@ -4,17 +4,17 @@ const onlineUsers = {};
 
 function setupSocket(io) {
   io.on('connection', (socket) => {
-    console.log("✅ Socket connected:", socket.id);
+    // console.log("✅ Socket connected:", socket.id); // Commented to reduce log spam
 
     socket.on('join', async (userId) => {
       try {
-        console.log("📌 User joined:", userId);
+        // console.log("📌 User joined:", userId); // Commented to reduce log spam
         onlineUsers[userId] = socket.id;
         
         // Join a room with userId for targeted notifications
         socket.join(userId);
-        console.log("🏠 User joined room:", userId);
-        console.log("📊 Total online users:", Object.keys(onlineUsers).length);
+        // console.log("🏠 User joined room:", userId);
+        // console.log("📊 Total online users:", Object.keys(onlineUsers).length);
 
         // Fetch unread notifications from DB:
         const unread = await Notification.find({
@@ -22,7 +22,7 @@ function setupSocket(io) {
           isRead: false,
         }).sort({ createdAt: -1 });
 
-        console.log(`📧 Found ${unread.length} unread notifications for user ${userId}`);
+        // console.log(`📧 Found ${unread.length} unread notifications for user ${userId}`);
 
         // Send them via socket:
         unread.forEach((notif) => {
@@ -34,11 +34,11 @@ function setupSocket(io) {
     });
 
     socket.on('disconnect', () => {
-      console.log("❌ Socket disconnected:", socket.id);
+      // console.log("❌ Socket disconnected:", socket.id); // Commented to reduce log spam
       for (let id in onlineUsers) {
         if (onlineUsers[id] === socket.id) {
           delete onlineUsers[id];
-          console.log(`👤 User ${id} removed from online users`);
+          // console.log(`👤 User ${id} removed from online users`);
           break;
         }
       }
@@ -51,7 +51,7 @@ function setupSocket(io) {
     // --- Chat Events ---
     socket.on('joinChat', (chatId) => {
       socket.join(chatId);
-      console.log(`🟢 User joined chat room: ${chatId}`);
+      // console.log(`🟢 User joined chat room: ${chatId}`);
     });
 
     socket.on('sendMessage', async (data) => {
