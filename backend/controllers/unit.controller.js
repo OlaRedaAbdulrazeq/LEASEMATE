@@ -200,10 +200,14 @@ const addUnit = asyncWrapper(async (req, res, next) => {
     if (!activeSub) {
       return next(appError.create('لا يوجد اشتراك نشط.', 403, httpStatusText.FAIL));
     }
-    // Count units for this subscription only
-    const unitCount = await Unit.countDocuments({ ownerId: user._id, subscriptionId: activeSub._id, status: { $in: ['available', 'booked'] } });
-    if (activeSub.unitLimit && unitCount >= activeSub.unitLimit) {
-      return next(appError.create('لقد تجاوزت الحد الأقصى لعدد الوحدات في خطتك الحالية. يرجى الترقية أو تجديد الاشتراك.', 403, httpStatusText.FAIL));
+    // Prevent adding units if subscription is expired
+    if (activeSub.status === 'expired') {
+      return next(appError.create('لقد وصلت للحد الأقصى للوحدات في خطتك. لا يمكنك إضافة وحدات جديدة حتى يقوم احد المشرفين بمراجهة وحداتك المرفوعة بالفعل .', 403, httpStatusText.FAIL));
+    }
+    // Count all units for this subscription (including pending)
+    const totalCount = await Unit.countDocuments({ ownerId: user._id, subscriptionId: activeSub._id, status: { $in: ['available', 'booked', 'approved', 'pending'] } });
+    if (activeSub.unitLimit && totalCount >= activeSub.unitLimit) {
+      return next(appError.create('لقد وصلت للحد الأقصى للوحدات في خطتك. لا يمكنك إضافة وحدات جديدة حتى يتم رفض أو حذف وحدة.', 403, httpStatusText.FAIL));
     }
     req.activeSub = activeSub; // Pass to next step
   }
@@ -222,7 +226,7 @@ const addUnit = asyncWrapper(async (req, res, next) => {
 
   const unit = new Unit({
     ...req.body,
-    images: uploadedImageUrls,
+    images: uploadedImageUrls.map(url => ({ url, status: 'pending' })),
     ownerId: req.user._id, // Set the owner ID from authenticated user
     subscriptionId: req.activeSub ? req.activeSub._id : undefined,
   });
@@ -497,6 +501,10 @@ const approveUnit = asyncWrapper(async (req, res, next) => {
   const io = req.app.get("io");
   if (io) {
     io.to(unit.ownerId._id.toString()).emit("newNotification", notification);
+    io.to(unit.ownerId._id.toString()).emit("unitStatusChanged", {
+      unitId: unit._id,
+      status: unit.status,
+    });
   }
 
   res.status(200).json({ status: httpStatusText.SUCCESS, data: { unit } });
@@ -527,6 +535,10 @@ const rejectUnit = asyncWrapper(async (req, res, next) => {
   const io = req.app.get("io");
   if (io) {
     io.to(unit.ownerId._id.toString()).emit("newNotification", notification);
+    io.to(unit.ownerId._id.toString()).emit("unitStatusChanged", {
+      unitId: unit._id,
+      status: unit.status,
+    });
   }
 
   res.status(200).json({ status: httpStatusText.SUCCESS, data: { unit } });
@@ -565,6 +577,59 @@ const resubmitRejectedUnit = asyncWrapper(async (req, res, next) => {
   });
 });
 
+// Add this endpoint to check if the user can add a unit
+const canAddUnit = asyncWrapper(async (req, res, next) => {
+  const user = req.user;
+  if (user.role !== 'landlord') {
+    return res.status(403).json({
+      status: httpStatusText.FAIL,
+      canAdd: false,
+      reason: 'Only landlords can add units.'
+    });
+  }
+  // Fetch all units for this landlord
+  const units = await Unit.find({ ownerId: user._id }).sort({ createdAt: -1 });
+  // If no units, allow adding
+  if (units.length === 0) {
+    return res.json({ status: httpStatusText.SUCCESS, canAdd: true });
+  }
+  // Check last unit status
+  const lastUnit = units[0];
+  if (['pending', 'under maintenance'].includes(lastUnit.status)) {
+    return res.json({
+      status: httpStatusText.SUCCESS,
+      canAdd: false,
+      reason: lastUnit.status === 'pending' ?
+        'لا يمكنك إضافة وحدة جديدة حتى يتم مراجعة وحدتك الحالية.' :
+        'لا يمكنك إضافة وحدة جديدة أثناء وجود وحدة تحت الصيانة.'
+    });
+  }
+  // Check plan limit
+  const Subscription = require('../models/subscription.model');
+  const activeSub = await Subscription.findOne({
+    landlordId: user._id,
+    status: 'active',
+    endDate: { $gte: new Date() }
+  }).sort({ startDate: -1 });
+  if (!activeSub) {
+    return res.json({
+      status: httpStatusText.FAIL,
+      canAdd: false,
+      reason: 'يجب الاشتراك في خطة لإضافة وحدة.'
+    });
+  }
+  const totalCount = await Unit.countDocuments({ ownerId: user._id, subscriptionId: activeSub._id, status: { $in: ['available', 'booked', 'approved', 'pending'] } });
+  if (activeSub.unitLimit && totalCount >= activeSub.unitLimit) {
+    return res.json({
+      status: httpStatusText.SUCCESS,
+      canAdd: false,
+      reason: 'لقد وصلت للحد الأقصى للوحدات في خطتك. يرجى الاشتراك في خطة جديدة.'
+    });
+  }
+  // Otherwise, allow adding
+  return res.json({ status: httpStatusText.SUCCESS, canAdd: true });
+});
+
 module.exports = {
   getAllUnits,
   getUnit,
@@ -580,4 +645,5 @@ module.exports = {
   approveAllUnitImages,
   rejectAllUnitImages,
   resubmitRejectedUnit,
+  canAddUnit,
 };
