@@ -793,6 +793,15 @@ if (params.governorate)
     );
     return response.data.unit;
   }
+
+  // Check if landlord can add a unit
+  async canAddUnit(token: string): Promise<{ status: string; canAdd: boolean; reason?: string }> {
+    return this.request("/units/can-add", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
 }
 
 export const apiService = new ApiService();
