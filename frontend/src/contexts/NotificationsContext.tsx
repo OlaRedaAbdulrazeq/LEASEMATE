@@ -182,6 +182,11 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       await markSingleAsRead(notification._id);
       
+      // Don't navigate for these notification types
+      if (notification.type === 'REFUND_SUCCESS' || notification.type === 'PAYMENT_SUCCESS') {
+        return;
+      }
+      
       let targetLink = notification.link || '/dashboard';
       
       if (notification.type === 'LEASE_EXPIRED') {
@@ -199,6 +204,12 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       router.push(targetLink);
     } catch (error) {
       console.error('Error handling notification click:', error);
+      
+      // Don't navigate for these notification types even on error
+      if (notification.type === 'REFUND_SUCCESS' || notification.type === 'PAYMENT_SUCCESS') {
+        return;
+      }
+      
       const targetLink = notification.link || '/dashboard';
       router.push(targetLink);
     } finally {
