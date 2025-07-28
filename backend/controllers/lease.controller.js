@@ -104,6 +104,34 @@ const getMyLease = async (req, res) => {
   }
 };
 
+const getLeaseById = async (req, res) => {
+  try {
+    const { leaseId } = req.params;
+    
+    const lease = await Lease.findById(leaseId)
+      .populate('tenantId', 'name phone')
+      .populate('landlordId', 'name phone')
+      .populate('unitId');
+
+    if (!lease) {
+      return res.status(404).json({ message: "لم يتم العثور على العقد." });
+    }
+
+    // التحقق من أن المستخدم له صلاحية الوصول للعقد
+    if (req.user.role === 'landlord' && lease.landlordId._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "ليس لديك صلاحية للوصول لهذا العقد." });
+    }
+    
+    if (req.user.role === 'tenant' && lease.tenantId._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "ليس لديك صلاحية للوصول لهذا العقد." });
+    }
+
+    res.json(lease);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 const getMyLeases = async (req, res) => {
   try {
     let query = {};
@@ -112,6 +140,11 @@ const getMyLeases = async (req, res) => {
     } else if (req.user.role === 'tenant') {
       query = { tenantId: req.user._id };
     }
+
+    // Filter by status - only show active and pending leases
+    // For maintenance requests, we only want active leases
+    const statusFilter = req.query.forMaintenance ? { status: { $in: ['active', 'pending'] } } : {};
+    query = { ...query, ...statusFilter };
 
     // Pagination
     const page = parseInt(req.query.page) > 0 ? parseInt(req.query.page) : 1;
@@ -772,6 +805,7 @@ const acceptLease = async (req, res) => {
 module.exports = {
   createLease,
   getMyLease,
+  getLeaseById,
   generateLeasePDF,
   getMyLeases,
   rejectLease,

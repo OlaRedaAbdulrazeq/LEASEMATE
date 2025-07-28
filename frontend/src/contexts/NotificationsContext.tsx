@@ -195,19 +195,24 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const handleNotificationClick = async (notification: Notification) => {
     // Mark notification as read
-          markSingleAsRead(notification._id);
-      
-      // Don't navigate for these notification types
-      if (notification.type === 'REFUND_SUCCESS' || notification.type === 'PAYMENT_SUCCESS') {
-        return;
-      }
-      
-      let targetLink = notification.link || '/dashboard';
+    markSingleAsRead(notification._id);
+    
+    // Don't navigate for these notification types
+    if (notification.type === 'REFUND_SUCCESS' || notification.type === 'PAYMENT_SUCCESS') {
+      return;
+    }
+    
+    let targetLink = notification.link || '/dashboard';
 
     // Navigate based on notification type
     if (notification.type === 'MAINTENANCE_REQUEST' || notification.type === 'MAINTENANCE_UPDATE') {
-      router.push('/dashboard/maintenance-requests');
-    }else if (notification.type === 'LEASE_EXPIRED') {
+      // Add maintenance request ID to URL if available
+      if (notification.maintenanceRequestId) {
+        router.push(`/dashboard/maintenance-requests?requestId=${notification.maintenanceRequestId}`);
+      } else {
+        router.push('/dashboard/maintenance-requests');
+      }
+    } else if (notification.type === 'LEASE_EXPIRED') {
       // For LEASE_EXPIRED, check if review already exists
       // Assume notification.link is the leave-review page with leaseId and tenantId/landlordId
       const leaseId = notification.leaseId;

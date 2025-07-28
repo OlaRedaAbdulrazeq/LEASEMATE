@@ -15,6 +15,22 @@ exports.createRequest = async (req, res) => {
     const { tenantId, unitId, contractId, title, description } = req.body;
     let image = req.body.image;
     
+    // التحقق من أن المستأجر لديه عقد نشط على الوحدة
+    if (req.user.role === 'tenant' && unitId) {
+      const Lease = require('../models/lease.model');
+      const activeLease = await Lease.findOne({
+        tenantId: req.user._id,
+        unitId: unitId,
+        status: 'active'
+      });
+      
+      if (!activeLease) {
+        return res.status(403).json({ 
+          message: 'لا يمكن إرسال طلب صيانة لهذه الوحدة. تأكد من أن لديك عقد إيجار نشط.' 
+        });
+      }
+    }
+    
     // لو فيه رفع صورة عبر middleware
     if (req.file) {
       console.log('📸 Uploading image to Cloudinary...');

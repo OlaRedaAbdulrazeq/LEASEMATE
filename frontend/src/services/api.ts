@@ -456,6 +456,14 @@ if (params.governorate)
       );
   }
 
+  async getLeaseById(leaseId: string) {
+    return this.request(`/leases/${leaseId}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("leasemate_token")}`,
+      },
+    });
+  }
+
   async downloadLeasePDF(leaseId: string) {
     const url = `${API_BASE_URL}/leases/${leaseId}/pdf`;
     const token = localStorage.getItem("leasemate_token");

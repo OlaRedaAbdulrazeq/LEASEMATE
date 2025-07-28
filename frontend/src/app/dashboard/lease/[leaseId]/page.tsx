@@ -112,10 +112,9 @@ export default function LeaseDetailsPage() {
     const fetchLease = async () => {
       setLoading(true);
       try {
-        // جلب كل عقود المستخدم ثم إيجاد العقد المطلوب
-        const res = (await apiService.getMyLeases()) as any;
-        const found = res.data?.leases?.find((l: any) => l._id === leaseId);
-        setLease(found || null);
+        // جلب العقد المحدد مباشرة باستخدام API service
+        const data = await apiService.getLeaseById(leaseId as string);
+        setLease(data);
       } catch (err: any) {
         toast.error(err.message || "فشل في جلب بيانات العقد");
       } finally {

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
+import { useTheme } from '../contexts/ThemeContext';
 
 const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000', {
   withCredentials: true,
@@ -26,12 +27,15 @@ const ChatBox: React.FC<ChatBoxProps> = ({ chatId, setChatId, userId, receiverId
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { theme } = useTheme();
 
   // معالجة: لو البيانات الأساسية غير متوفرة
   if (!userId || !receiverId || !unitId) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
-        <span className="text-orange-500 font-bold text-lg">جاري تحميل بيانات الشات...</span>
+        <span className={`font-bold text-lg ${theme === 'dark' ? 'text-orange-400' : 'text-orange-500'}`}>
+          جاري تحميل بيانات الشات...
+        </span>
       </div>
     );
   }
@@ -99,21 +103,49 @@ const ChatBox: React.FC<ChatBoxProps> = ({ chatId, setChatId, userId, receiverId
   };
 
   return (
-    <div className="flex flex-col h-[28rem] sm:h-[32rem] w-full border rounded-2xl shadow-2xl bg-gradient-to-br from-white to-orange-50 relative">
+    <div className={`flex flex-col h-[28rem] sm:h-[32rem] w-full border rounded-2xl shadow-2xl relative ${
+      theme === 'dark' 
+        ? 'bg-gradient-to-br from-gray-900 to-gray-800 border-gray-700' 
+        : 'bg-gradient-to-br from-white to-orange-50 border-orange-200'
+    }`}>
       {/* عنوان الشات */}
-      <div className="px-4 py-3 border-b bg-gradient-to-r from-orange-50 to-white rounded-t-2xl flex items-center gap-2 sticky top-0 z-10">
-        <span className="font-bold text-orange-600 text-lg">المحادثة</span>
-        {receiverName && <span className="text-gray-500 text-sm">مع {receiverName}</span>}
+      <div className={`px-4 py-3 border-b rounded-t-2xl flex items-center gap-2 sticky top-0 z-10 ${
+        theme === 'dark'
+          ? 'bg-gradient-to-r from-gray-800 to-gray-900 border-gray-700'
+          : 'bg-gradient-to-r from-orange-50 to-white border-orange-200'
+      }`}>
+        <span className={`font-bold text-lg ${
+          theme === 'dark' ? 'text-orange-400' : 'text-orange-600'
+        }`}>
+          المحادثة
+        </span>
+        {receiverName && (
+          <span className={`text-sm ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+          }`}>
+            مع {receiverName}
+          </span>
+        )}
       </div>
+      
       {/* الرسائل */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-thumb-orange-200 scrollbar-track-orange-50">
+      <div className={`flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin ${
+        theme === 'dark'
+          ? 'scrollbar-thumb-gray-600 scrollbar-track-gray-800'
+          : 'scrollbar-thumb-orange-200 scrollbar-track-orange-50'
+      }`}>
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.sender === userId ? 'justify-end' : 'justify-start'}`}>
             <div
               className={`relative max-w-[75%] px-4 py-2 rounded-2xl shadow-md text-base break-words
                 ${msg.sender === userId
-                  ? 'bg-orange-500 text-white rounded-br-md rounded-tl-2xl'
-                  : 'bg-white text-gray-800 border border-orange-100 rounded-bl-md rounded-tr-2xl'}
+                  ? theme === 'dark'
+                    ? 'bg-orange-600 text-white rounded-br-md rounded-tl-2xl'
+                    : 'bg-orange-500 text-white rounded-br-md rounded-tl-2xl'
+                  : theme === 'dark'
+                    ? 'bg-gray-700 text-gray-100 border border-gray-600 rounded-bl-md rounded-tr-2xl'
+                    : 'bg-white text-gray-800 border border-orange-100 rounded-bl-md rounded-tr-2xl'
+                }
               `}
               style={{
                 borderBottomRightRadius: msg.sender === userId ? '0.5rem' : '1rem',
@@ -121,23 +153,42 @@ const ChatBox: React.FC<ChatBoxProps> = ({ chatId, setChatId, userId, receiverId
               }}
             >
               {msg.text}
-              <div className={`text-xs mt-1 ${msg.sender === userId ? 'text-orange-100' : 'text-gray-400'}`}>{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}</div>
+              <div className={`text-xs mt-1 ${
+                msg.sender === userId 
+                  ? theme === 'dark' ? 'text-orange-200' : 'text-orange-100'
+                  : theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
+              }`}>
+                {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}
+              </div>
             </div>
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
+      
       {/* شريط الإدخال */}
-      <form onSubmit={handleSend} className="p-3 flex gap-2 border-t bg-white rounded-b-2xl sticky bottom-0 z-10">
+      <form onSubmit={handleSend} className={`p-3 flex gap-2 border-t rounded-b-2xl sticky bottom-0 z-10 ${
+        theme === 'dark' 
+          ? 'bg-gray-800 border-gray-700' 
+          : 'bg-white border-orange-200'
+      }`}>
         <input
-          className="flex-1 border border-orange-200 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400 transition text-base bg-orange-50"
+          className={`flex-1 border rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400 transition text-base ${
+            theme === 'dark'
+              ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400'
+              : 'bg-orange-50 border-orange-200 text-gray-800 placeholder-gray-500'
+          }`}
           value={text}
           onChange={e => setText(e.target.value)}
           placeholder="اكتب رسالتك..."
         />
         <button
           type="submit"
-          className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-full font-bold shadow transition"
+          className={`px-6 py-2 rounded-full font-bold shadow transition ${
+            theme === 'dark'
+              ? 'bg-orange-600 hover:bg-orange-700 text-white'
+              : 'bg-orange-500 hover:bg-orange-600 text-white'
+          }`}
         >
           إرسال
         </button>

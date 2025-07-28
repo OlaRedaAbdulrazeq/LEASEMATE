@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
@@ -14,10 +15,9 @@ interface MaintenanceRequest {
   status: "pending" | "in progress" | "resolved";
   notes?: string;
   createdAt: string;
-  _landlordNote?: string; // Added for landlord's note
+  _landlordNote?: string;
 }
 
-// Add Unit interface
 interface Unit {
   _id: string;
   name: string;
@@ -26,11 +26,11 @@ interface Unit {
 
 export default function MaintenanceRequestsPage() {
   const { user, token, socket } = useAuth();
-  // Add unitId and contractId to form state
+  const searchParams = useSearchParams();
   const [form, setForm] = useState({ title: "", description: "", image: null as File | null, unitId: "", contractId: "" });
   const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]); // Store tenant's units
-  const [leases, setLeases] = useState<any[]>([]); // Store tenant's leases
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [leases, setLeases] = useState<any[]>([]);
   const [formLoading, setFormLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
   const [unitsLoading, setUnitsLoading] = useState(false);
@@ -39,6 +39,33 @@ export default function MaintenanceRequestsPage() {
   const [localDates, setLocalDates] = useState<{ [id: string]: string }>({});
   const [openImage, setOpenImage] = useState<string | null>(null);
   const [buttonLoading, setButtonLoading] = useState<{ [id: string]: boolean }>({});
+  
+  // New state for sidebar and selected request
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [selectedRequest, setSelectedRequest] = useState<MaintenanceRequest | null>(null);
+  const [highlightedRequest, setHighlightedRequest] = useState<string | null>(null);
+
+  // Handle URL parameter for specific request selection
+  useEffect(() => {
+    const requestId = searchParams.get('requestId');
+    console.log('🔍 URL requestId:', requestId);
+    if (requestId && requests.length > 0) {
+      const targetRequest = requests.find(req => req._id === requestId);
+      console.log('🎯 Target request found:', targetRequest);
+      if (targetRequest) {
+        setSelectedRequest(targetRequest);
+        setHighlightedRequest(requestId);
+        setSidebarOpen(true);
+        // Scroll to the selected request details
+        setTimeout(() => {
+          const detailsElement = document.getElementById('request-details');
+          if (detailsElement) {
+            detailsElement.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
+      }
+    }
+  }, [searchParams, requests]);
 
   // Listen for maintenance request events using the shared socket
   useEffect(() => {
@@ -48,37 +75,48 @@ export default function MaintenanceRequestsPage() {
     if (socket) {
       const handleRequestCreated = (data: any) => {
         console.log('🆕 New maintenance request:', data);
-        // Add the new request to the list
         setRequests(prev => [data.request, ...prev]);
-        // Show success message
         setSuccess(data.message);
-        // Clear success message after 3 seconds
         setTimeout(() => setSuccess(""), 3000);
+        
+        // If landlord, automatically select and highlight the new request
+        if (user?.role === 'landlord') {
+          setHighlightedRequest(data.request._id);
+          setSelectedRequest(data.request);
+          setSidebarOpen(true);
+          // Scroll to the selected request details
+          setTimeout(() => {
+            const detailsElement = document.getElementById('request-details');
+            if (detailsElement) {
+              detailsElement.scrollIntoView({ behavior: 'smooth' });
+            }
+          }, 100);
+        }
       };
 
       const handleRequestUpdated = (data: any) => {
         console.log('🔄 Maintenance request updated:', data);
-        // Update the request in the list
         setRequests(prev => prev.map(req => 
           req._id === data.request._id ? data.request : req
         ));
-        // Show success message
         setSuccess(data.message);
-        // Clear success message after 3 seconds
         setTimeout(() => setSuccess(""), 3000);
+        
+        // Update selected request if it's the one being viewed
+        if (selectedRequest?._id === data.request._id) {
+          setSelectedRequest(data.request);
+        }
       };
 
-      // Add event listeners
       socket.on('maintenanceRequestCreated', handleRequestCreated);
       socket.on('maintenanceRequestUpdated', handleRequestUpdated);
 
-      // Cleanup event listeners
       return () => {
         socket.off('maintenanceRequestCreated', handleRequestCreated);
         socket.off('maintenanceRequestUpdated', handleRequestUpdated);
       };
     }
-  }, [socket]);
+  }, [socket, user?.role, selectedRequest]);
 
   // Fetch tenant's units on mount (if tenant)
   useEffect(() => {
@@ -95,7 +133,6 @@ export default function MaintenanceRequestsPage() {
   }, [token]);
 
   useEffect(() => {
-    // بعد جلب الطلبات، احسبي التواريخ المحلية
     const dates: { [id: string]: string } = {};
     requests.forEach((req) => {
       dates[req._id] = new Date(req.createdAt).toLocaleString();
@@ -106,7 +143,7 @@ export default function MaintenanceRequestsPage() {
   const fetchRequests = async () => {
     try {
       setDataLoading(true);
-      console.log("Current token:", token); // للتشخيص
+      console.log("Current token:", token);
       if (!token) {
         setError("يجب تسجيل الدخول أولاً");
         return;
@@ -118,8 +155,8 @@ export default function MaintenanceRequestsPage() {
         withCredentials: true,
       });
       setRequests(res.data);
-    } catch (err) {
-      console.error("Error fetching requests:", err); // للتشخيص
+    } catch (err: any) {
+      console.error("Error fetching requests:", err);
       setError("حدث خطأ أثناء جلب الطلبات");
     } finally {
       setDataLoading(false);
@@ -129,8 +166,7 @@ export default function MaintenanceRequestsPage() {
   const fetchUnits = async () => {
     try {
       setUnitsLoading(true);
-      // Fetch tenant's leases to get their units
-      const res = await axios.get("http://localhost:5000/api/leases/my-leases", {
+      const res = await axios.get("http://localhost:5000/api/leases/my-leases?forMaintenance=true", {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
@@ -138,15 +174,16 @@ export default function MaintenanceRequestsPage() {
       const leases = res.data.data?.leases || [];
       setLeases(leases);
       
-      // Extract units from leases
-      const tenantUnits = leases.map((lease: any) => ({
-        _id: lease.unitId._id,
-        name: lease.unitId.name,
-        address: lease.unitId.address
-      }));
+      const tenantUnits = leases
+        .filter((lease: any) => lease.status === 'active')
+        .map((lease: any) => ({
+          _id: lease.unitId._id,
+          name: lease.unitId.name,
+          address: lease.unitId.address
+        }));
       
       setUnits(tenantUnits);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching tenant units:", err);
       setError("حدث خطأ أثناء جلب الوحدات");
     } finally {
@@ -158,7 +195,6 @@ export default function MaintenanceRequestsPage() {
     const { name, value } = e.target;
     
     if (name === 'unitId') {
-      // Find the corresponding lease for the selected unit
       const selectedLease = leases.find(lease => lease.unitId._id === value);
       setForm({ 
         ...form, 
@@ -205,190 +241,364 @@ export default function MaintenanceRequestsPage() {
       });
       setSuccess("تم إرسال الطلب بنجاح");
       setForm({ title: "", description: "", image: null, unitId: "", contractId: "" });
-      // Remove fetchRequests() - let real-time update handle it
-    } catch (err) {
-      console.error("Error submitting request:", err); // للتشخيص
-      setError("حدث خطأ أثناء إرسال الطلب");
+    } catch (err: any) {
+      console.error("Error submitting request:", err);
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError("حدث خطأ أثناء إرسال الطلب");
+      }
     } finally {
       setFormLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300';
+      case 'in progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300';
+      case 'resolved': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending': return 'قيد الانتظار';
+      case 'in progress': return 'جاري التنفيذ';
+      case 'resolved': return 'تم الحل';
+      default: return status;
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
-      <main className="mt-20 pt-32 pb-16 px-4 max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">طلبات الصيانة</h1>
-        {user?.role === "tenant" && (
-          <form
-            onSubmit={handleSubmit}
-            className="relative bg-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-3xl p-10 mb-12 border-2 border-orange-200 dark:border-orange-700 max-w-xl mx-auto"
-          >
-            <div className="mb-8">
-              <h2 className="text-3xl font-extrabold text-orange-600 dark:text-orange-400 mb-2 tracking-tight">طلب صيانة جديد</h2>
-              <p className="text-gray-500 dark:text-gray-400 text-base">يرجى تعبئة جميع الحقول المطلوبة بدقة.</p>
-            </div>
-            <div className="mb-7">
-              <label className="block mb-2 text-lg font-semibold text-gray-700 dark:text-gray-300">الوحدة</label>
-              <select
-                name="unitId"
-                value={form.unitId}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-orange-200 dark:border-orange-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 dark:bg-gray-800 dark:text-white transition-all duration-200 shadow-sm text-lg"
-                required
-                disabled={unitsLoading}
-              >
-                <option value="">
-                  {unitsLoading ? "جاري تحميل الوحدات..." : "اختر الوحدة"}
-                </option>
-                {units.map((unit) => (
-                  <option key={unit._id} value={unit._id}>
-                    {unit.name} {unit.address ? `- ${unit.address}` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-7">
-              <label className="block mb-2 text-lg font-semibold text-gray-700 dark:text-gray-300">عنوان العطل</label>
-              <input
-                type="text"
-                name="title"
-                value={form.title}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-orange-200 dark:border-orange-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 dark:bg-gray-800 dark:text-white transition-all duration-200 shadow-sm text-lg"
-                required
-                disabled={formLoading}
-              />
-            </div>
-            <div className="mb-7">
-              <label className="block mb-2 text-lg font-semibold text-gray-700 dark:text-gray-300">وصف العطل</label>
-              <textarea
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-orange-200 dark:border-orange-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 dark:bg-gray-800 dark:text-white transition-all duration-200 shadow-sm min-h-[90px] resize-none text-lg"
-                required
-                disabled={formLoading}
-              />
-            </div>
-            <div className="mb-7">
-              <label className="block mb-2 text-lg font-semibold text-gray-700 dark:text-gray-300">صورة العطل (اختياري)</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="w-full file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-base file:font-semibold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200 dark:file:bg-gray-800 dark:file:text-orange-200 dark:hover:file:bg-gray-700 transition-all duration-200"
-                disabled={formLoading}
-              />
-            </div>
-            {error && <div className="mb-5 text-red-600 text-center font-bold text-lg animate-shake">{error}</div>}
-            {success && <div className="mb-5 text-green-600 text-center font-bold text-lg animate-fade-in">{success}</div>}
+      
+      <div className="mt-20 pt-4 pb-16 flex h-screen">
+        {/* Sidebar */}
+        <div className={`${sidebarOpen ? 'w-80' : 'w-16'} bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out border-r border-gray-200 dark:border-gray-700`}>
+          {/* Sidebar Header */}
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            {sidebarOpen && (
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">طلبات الصيانة</h2>
+            )}
             <button
-              type="submit"
-              disabled={formLoading || unitsLoading || units.length === 0}
-              className="w-full bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 text-white py-3 rounded-xl font-bold text-xl mt-2 shadow-lg transition-all duration-200 disabled:opacity-50 hover:scale-[1.03]"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
-              {formLoading ? "...جاري الإرسال" : "إرسال الطلب"}
+              {sidebarOpen ? (
+                <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                </svg>
+              )}
             </button>
-          </form>
-        )}
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">الطلبات السابقة</h2>
-        {dataLoading ? (
-          <div className="text-center">جاري التحميل...</div>
-        ) : requests.length === 0 ? (
-          <div className="text-center text-gray-500">لا توجد طلبات صيانة بعد.</div>
-        ) : (
-          <ul className="space-y-4">
-            {requests.map((req) => (
-              <li key={req._id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-bold text-gray-900 dark:text-white">{req.title}</span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${req.status === "pending" ? "bg-yellow-100 text-yellow-800" : req.status === "in progress" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>{req.status === "pending" ? "قيد الانتظار" : req.status === "in progress" ? "جاري التنفيذ" : "تم الحل"}</span>
-                </div>
-                <div className="text-gray-700 dark:text-gray-300 mb-2">{req.description}</div>
-                {req.image && (
-                  <img
-                    src={req.image}
-                    alt="صورة العطل"
-                    className="w-40 h-40 object-contain rounded mb-2 cursor-pointer transition-transform hover:scale-105"
-                    style={{ background: "#f3f3f3" }}
-                    onClick={() => setOpenImage(req.image || "")}
-                  />
-                )}
-                {req.notes && <div className="text-sm text-gray-500 mt-2">ملاحظة: {req.notes}</div>}
-                {user?.role === 'landlord' && (
-                  <div className="mt-2 flex flex-col gap-2">
-                    {req.status !== 'resolved' && (
-                      <textarea
-                        placeholder="اكتب ملاحظة للمستأجر..."
-                        className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm"
-                        value={req._landlordNote || ''}
-                        onChange={e => {
-                          setRequests(prev => prev.map(r => r._id === req._id ? { ...r, _landlordNote: e.target.value } : r));
-                        }}
-                      />
+          </div>
+
+          {/* Requests List */}
+          <div className="overflow-y-auto h-full">
+            {dataLoading ? (
+              <div className="p-4 text-center text-gray-500">جاري التحميل...</div>
+            ) : requests.length === 0 ? (
+              <div className="p-4 text-center text-gray-500">لا توجد طلبات صيانة</div>
+            ) : (
+              <div className="p-2">
+                {requests.map((req) => (
+                  <div
+                    key={req._id}
+                    className={`mb-2 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                      selectedRequest?._id === req._id
+                        ? 'bg-orange-100 dark:bg-orange-900/30 border-orange-300 dark:border-orange-600'
+                        : highlightedRequest === req._id
+                        ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 animate-pulse'
+                        : 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'
+                    } border`}
+                    onClick={() => {
+                      setSelectedRequest(req);
+                      setHighlightedRequest(null);
+                    }}
+                  >
+                    {sidebarOpen ? (
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
+                            {req.title}
+                          </h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(req.status)}`}>
+                            {getStatusText(req.status)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                          {req.description}
+                        </p>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {localDates[req._id]}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <div className={`w-3 h-3 rounded-full mx-auto mb-1 ${
+                          req.status === 'pending' ? 'bg-yellow-500' :
+                          req.status === 'in progress' ? 'bg-blue-500' :
+                          'bg-green-500'
+                        }`}></div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">
+                          {req.title.substring(0, 2)}
+                        </div>
+                      </div>
                     )}
-                    <div className="flex gap-2">
-                      {req.status === 'pending' && (
-                        <button
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
-                          disabled={buttonLoading[req._id]}
-                          onClick={async () => {
-                            setButtonLoading(prev => ({ ...prev, [req._id]: true }));
-                            setError("");
-                            try {
-                              await axios.patch(`http://localhost:5000/api/maintenance/${req._id}`,
-                                { status: 'in progress', notes: req._landlordNote || '' },
-                                { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
-                              );
-                              // UI will update via socket
-                            } catch (error) {
-                              console.error('Error updating request:', error);
-                              setError('حدث خطأ أثناء تحديث الطلب');
-                            } finally {
-                              setButtonLoading(prev => ({ ...prev, [req._id]: false }));
-                            }
-                          }}
-                        >
-                          {buttonLoading[req._id] ? '...جاري التنفيذ' : 'قبول الطلب (جاري التنفيذ)'}
-                        </button>
-                      )}
-                      {req.status !== 'resolved' && (
-                        <button
-                          className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
-                          disabled={buttonLoading[req._id]}
-                          onClick={async () => {
-                            setButtonLoading(prev => ({ ...prev, [req._id]: true }));
-                            setError("");
-                            try {
-                              console.log('PATCH /api/maintenance/:id', req._id, { status: 'resolved', notes: req._landlordNote || '' });
-                              await axios.patch(`http://localhost:5000/api/maintenance/${req._id}`,
-                                { status: 'resolved', notes: req._landlordNote || '' },
-                                { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
-                              );
-                              // UI will update via socket
-                            } catch (error) {
-                              console.error('Error updating request:', error);
-                              setError('حدث خطأ أثناء تحديث الطلب');
-                            } finally {
-                              setButtonLoading(prev => ({ ...prev, [req._id]: false }));
-                            }
-                          }}
-                        >
-                          {buttonLoading[req._id] ? '...جاري الحل' : 'تم الحل'}
-                        </button>
-                      )}
-                    </div>
                   </div>
-                )}
-                {/* <div className="text-xs text-gray-400 mt-1">
-                  تاريخ الإرسال: {localDates[req._id] || ""}
-                </div> */}
-              </li>
-            ))}
-          </ul>
-        )}
-      </main>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto p-6">
+            {/* Form Section */}
+            {user?.role === "tenant" && (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-6">
+                <div className="mb-4">
+                  <h2 className="text-xl font-bold text-orange-600 dark:text-orange-400 mb-1">طلب صيانة جديد</h2>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">يرجى تعبئة جميع الحقول المطلوبة بدقة.</p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label className="block mb-2 text-base font-semibold text-gray-700 dark:text-gray-300">الوحدة</label>
+                    <select
+                      name="unitId"
+                      value={form.unitId}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-orange-200 dark:border-orange-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 dark:bg-gray-700 dark:text-white transition-all duration-200"
+                      required
+                      disabled={unitsLoading}
+                    >
+                      <option value="">
+                        {unitsLoading ? "جاري تحميل الوحدات..." : "اختر الوحدة"}
+                      </option>
+                      {units.map((unit) => (
+                        <option key={unit._id} value={unit._id}>
+                          {unit.name} {unit.address ? `- ${unit.address}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    {!unitsLoading && units.length === 0 && (
+                      <div className="mt-2 text-orange-600 text-sm">
+                        لا توجد وحدات متاحة للصيانة. تأكد من أن لديك عقود إيجار نشطة.
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block mb-2 text-base font-semibold text-gray-700 dark:text-gray-300">عنوان العطل</label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={form.title}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-orange-200 dark:border-orange-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 dark:bg-gray-700 dark:text-white transition-all duration-200"
+                      required
+                      disabled={formLoading}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-2 text-base font-semibold text-gray-700 dark:text-gray-300">وصف العطل</label>
+                    <textarea
+                      name="description"
+                      value={form.description}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-orange-200 dark:border-orange-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 dark:bg-gray-700 dark:text-white transition-all duration-200 min-h-[80px] resize-none"
+                      required
+                      disabled={formLoading}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-2 text-base font-semibold text-gray-700 dark:text-gray-300">صورة العطل (اختياري)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="w-full file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200 dark:file:bg-gray-700 dark:file:text-orange-200 dark:hover:file:bg-gray-600 transition-all duration-200"
+                      disabled={formLoading}
+                    />
+                  </div>
+
+                  {error && <div className="text-red-600 text-center font-bold text-base animate-shake">{error}</div>}
+                  {success && <div className="text-green-600 text-center font-bold text-base animate-fade-in">{success}</div>}
+
+                  <button
+                    type="submit"
+                    disabled={formLoading || unitsLoading || units.length === 0}
+                    className="w-full bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 text-white py-2 rounded-lg font-bold text-base shadow-lg transition-all duration-200 disabled:opacity-50 hover:scale-[1.02]"
+                  >
+                    {formLoading ? "...جاري الإرسال" : "إرسال الطلب"}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Selected Request Details */}
+            {selectedRequest && (
+              <div id="request-details" className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">تفاصيل الطلب</h2>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(selectedRequest.status)}`}>
+                    {getStatusText(selectedRequest.status)}
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{selectedRequest.title}</h3>
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{selectedRequest.description}</p>
+                  </div>
+
+                  {selectedRequest.image && (
+                    <div>
+                      <h4 className="text-base font-semibold text-gray-900 dark:text-white mb-2">صورة العطل</h4>
+                      <img
+                        src={selectedRequest.image}
+                        alt="صورة العطل"
+                        className="w-48 h-48 object-contain rounded-lg border border-gray-200 dark:border-gray-600 cursor-pointer transition-transform hover:scale-105"
+                        onClick={() => setOpenImage(selectedRequest.image || "")}
+                      />
+                    </div>
+                  )}
+
+                  {selectedRequest.notes && (
+                    <div className={`p-4 rounded-lg border ${
+                      selectedRequest.status === 'in progress' 
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700'
+                        : selectedRequest.status === 'resolved'
+                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700'
+                        : 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-700'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg className={`w-5 h-5 ${
+                          selectedRequest.status === 'in progress'
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : selectedRequest.status === 'resolved'
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-gray-600 dark:text-gray-400'
+                        }`} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        <span className={`font-semibold text-base ${
+                          selectedRequest.status === 'in progress'
+                            ? 'text-blue-700 dark:text-blue-300'
+                            : selectedRequest.status === 'resolved'
+                            ? 'text-green-700 dark:text-green-300'
+                            : 'text-gray-700 dark:text-gray-300'
+                        }`}>
+                          ملاحظة المالك:
+                        </span>
+                      </div>
+                      <p className={`leading-relaxed ${
+                        selectedRequest.status === 'in progress'
+                          ? 'text-blue-800 dark:text-blue-200'
+                          : selectedRequest.status === 'resolved'
+                          ? 'text-green-800 dark:text-green-200'
+                          : 'text-gray-800 dark:text-gray-200'
+                      }`}>
+                        {selectedRequest.notes}
+                      </p>
+                    </div>
+                  )}
+
+                  {user?.role === 'landlord' && (
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                      <h4 className="text-base font-semibold text-gray-900 dark:text-white mb-3">إدارة الطلب</h4>
+                      <div className="space-y-3">
+                        {selectedRequest.status !== 'resolved' && (
+                          <textarea
+                            placeholder="اكتب ملاحظة للمستأجر..."
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 dark:bg-gray-700 dark:text-white"
+                            value={selectedRequest._landlordNote || ''}
+                            onChange={e => {
+                              setSelectedRequest(prev => prev ? { ...prev, _landlordNote: e.target.value } : null);
+                              setRequests(prev => prev.map(r => r._id === selectedRequest._id ? { ...r, _landlordNote: e.target.value } : r));
+                            }}
+                          />
+                        )}
+                        <div className="flex gap-2">
+                          {selectedRequest.status === 'pending' && (
+                            <button
+                              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                              disabled={buttonLoading[selectedRequest._id]}
+                              onClick={async () => {
+                                setButtonLoading(prev => ({ ...prev, [selectedRequest._id]: true }));
+                                setError("");
+                                try {
+                                  await axios.patch(`http://localhost:5000/api/maintenance/${selectedRequest._id}`,
+                                    { status: 'in progress', notes: selectedRequest._landlordNote || '' },
+                                    { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
+                                  );
+                                } catch (error: any) {
+                                  console.error('Error updating request:', error);
+                                  setError('حدث خطأ أثناء تحديث الطلب');
+                                } finally {
+                                  setButtonLoading(prev => ({ ...prev, [selectedRequest._id]: false }));
+                                }
+                              }}
+                            >
+                              {buttonLoading[selectedRequest._id] ? '...جاري التنفيذ' : 'قبول الطلب (جاري التنفيذ)'}
+                            </button>
+                          )}
+                          {selectedRequest.status !== 'resolved' && (
+                            <button
+                              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                              disabled={buttonLoading[selectedRequest._id]}
+                              onClick={async () => {
+                                setButtonLoading(prev => ({ ...prev, [selectedRequest._id]: true }));
+                                setError("");
+                                try {
+                                  await axios.patch(`http://localhost:5000/api/maintenance/${selectedRequest._id}`,
+                                    { status: 'resolved', notes: selectedRequest._landlordNote || '' },
+                                    { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
+                                  );
+                                } catch (error: any) {
+                                  console.error('Error updating request:', error);
+                                  setError('حدث خطأ أثناء تحديث الطلب');
+                                } finally {
+                                  setButtonLoading(prev => ({ ...prev, [selectedRequest._id]: false }));
+                                }
+                              }}
+                            >
+                              {buttonLoading[selectedRequest._id] ? '...جاري الحل' : 'تم الحل'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-sm text-gray-500 dark:text-gray-400 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    تاريخ الإرسال: {localDates[selectedRequest._id]}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!selectedRequest && (
+              <div className="text-center py-8">
+                <div className="text-gray-400 dark:text-gray-500 text-4xl mb-3">🔧</div>
+                <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">اختر طلب صيانة</h3>
+                <p className="text-gray-500 dark:text-gray-500 text-sm">اضغط على أي طلب من القائمة الجانبية لعرض تفاصيله</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Modal لعرض الصورة */}
       {openImage && (

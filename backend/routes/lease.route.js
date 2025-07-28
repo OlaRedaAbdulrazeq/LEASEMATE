@@ -2,7 +2,8 @@ const express = require("express");
 const router = express.Router();
 const { 
   createLease, 
-  getMyLease, 
+  getMyLease,
+  getLeaseById, 
   getMyLeases, 
   generateLeasePDF,
   rejectLease,
@@ -20,8 +21,11 @@ router.get("/my-lease", protect, getMyLease);
 // جلب كل عقود المستخدم
 router.get("/my-leases", protect, getMyLeases);
 
-// تحميل عقد الإيجار PDF
+// تحميل عقد الإيجار PDF (يجب أن يكون قبل route العقد المحدد)
 router.get("/:leaseId/pdf", protect, generateLeasePDF);
+
+// جلب عقد محدد بواسطة ID
+router.get("/:leaseId", protect, getLeaseById);
 
 // رفض العقد من قبل المستأجر
 router.patch("/:id/reject", protect, checkRole("tenant"), rejectLease);
