@@ -186,29 +186,79 @@ const refundSubscription = async (req, res) => {
   } catch (error) {
     console.error('Error refunding subscription:', error);
     res.status(500).json({ message: "حدث خطأ أثناء استرداد الاشتراك" });}}
-// Get users with more than 3 abusive comments
+// Get users with 2 or more abusive comments (at risk of being blocked or already blocked)
 const getAbusiveUsers = async (req, res) => {
   try {
-    const users = await User.find({ abusiveCommentsCount: { $gt: 3 } }).select('-password').sort({ abusiveCommentsCount: -1 });
+    const users = await User.find({ abusiveCommentsCount: { $gte: 2 } }).select('-password').sort({ abusiveCommentsCount: -1 });
     res.json({ users });
   } catch (error) {
     res.status(500).json({ message: "Error fetching abusive users" });
   }
 };
 
-// Block a user
-const blockUser = async (req, res) => {
+// Admin block/unblock user
+const toggleUserBlock = async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    const { isBlocked } = req.body;
+    
+    // Update user blocked status
+    const updatedUser = await User.findByIdAndUpdate(
+      userId, 
+      { isBlocked }, 
+      { new: true }
+    ).select('-password');
+    
+    if (!updatedUser) {
+      return res.status(404).json({ message: "المستخدم غير موجود" });
     }
-    user.isBlocked = true;
-    await user.save();
-    res.json({ message: "User has been blocked successfully." });
+    
+    // Create notification for the user
+    const notificationService = require('../services/notification.service');
+    const notificationData = {
+      userId: userId,
+      senderId: req.user._id, // Admin who performed the action
+      type: isBlocked ? 'USER_BLOCKED' : 'GENERAL',
+      title: isBlocked ? 'تم حظر حسابك' : 'تم إلغاء حظر حسابك',
+      message: isBlocked 
+        ? 'تم حظر حسابك من قبل الإدارة. يمكنك التواصل مع الدعم الفني للمراجعة.'
+        : 'تم إلغاء حظر حسابك. يمكنك الآن استخدام المنصة بشكل طبيعي.',
+      isRead: false
+    };
+    
+    const notification = await notificationService.createNotification(notificationData);
+    
+    // Send real-time WebSocket events
+    const io = req.app.get('io');
+    if (io) {
+      console.log(`🚫 Emitting real-time user ${isBlocked ? 'blocked' : 'unblocked'} event to user:`, userId);
+      
+      // Send notification
+      const populatedNotification = await notification.populate('senderId', 'name avatarUrl');
+      io.to(userId).emit('newNotification', populatedNotification);
+      
+      // Send blocking status change event
+      io.to(userId).emit('userBlocked', {
+        userId: userId,
+        isBlocked: isBlocked,
+        reason: isBlocked ? 'إجراء إداري' : 'إلغاء الحظر',
+        timestamp: new Date(),
+        adminAction: true
+      });
+      
+      console.log(`✅ User ${isBlocked ? 'blocked' : 'unblocked'} event emitted successfully`);
+    } else {
+      console.error('❌ Socket.io instance not available for user blocking event');
+    }
+    
+    res.json({ 
+      message: isBlocked ? "تم حظر المستخدم بنجاح" : "تم إلغاء حظر المستخدم بنجاح",
+      user: updatedUser 
+    });
+    
   } catch (error) {
-    res.status(500).json({ message: "Error blocking user" });
+    console.error('Error toggling user block status:', error);
+    res.status(500).json({ message: "حدث خطأ أثناء تغيير حالة الحظر" });
   }
 };
 
@@ -219,5 +269,5 @@ module.exports = {
   getSubscriptions,
   refundSubscription,
   getAbusiveUsers,
-  blockUser,
+  toggleUserBlock,
 };
