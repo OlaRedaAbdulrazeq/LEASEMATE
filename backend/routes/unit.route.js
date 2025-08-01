@@ -10,6 +10,7 @@ const {
   testDatabase,
   getMyUnits,
   getPendingUnitImages,
+  getPendingUnitsWithDetails,
   reviewUnitImage,
   approveUnit,
   rejectUnit,
@@ -17,6 +18,9 @@ const {
   rejectAllUnitImages,
   resubmitRejectedUnit,
   canAddUnit,
+  getAvailableUnits,
+  getMaintenanceUnits,
+  getBookedUnits,
 } = require("../controllers/unit.controller");
 
 const upload = require("../middlewares/upload.middleware");
@@ -68,6 +72,12 @@ router.get(
   checkRole("admin"),
   getPendingUnitImages
 );
+router.get(
+  "/admin/pending-units",
+  protect,
+  checkRole("admin"),
+  getPendingUnitsWithDetails
+);
 router.patch(
   "/admin/review-image",
   protect,
@@ -100,6 +110,28 @@ router.post(
   checkRole("landlord"),
   checkVerification,
   resubmitRejectedUnit
+);
+
+// Admin routes for getting units by status
+router.get(
+  "/admin/available-units",
+  protect,
+  checkRole("admin"),
+  getAvailableUnits
+);
+
+router.get(
+  "/admin/maintenance-units",
+  protect,
+  checkRole("admin"),
+  getMaintenanceUnits
+);
+
+router.get(
+  "/admin/booked-units",
+  protect,
+  checkRole("admin"),
+  getBookedUnits
 );
 
 module.exports = router;
