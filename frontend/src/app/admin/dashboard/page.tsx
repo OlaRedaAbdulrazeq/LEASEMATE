@@ -56,7 +56,7 @@ export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const usersPerPage = 6; // Number of users per page
  
-  const [activeTab, setActiveTab] = useState<'table' | 'dashboard' | 'images' | 'abusive' | 'support'| 'subscriptions'>('table');
+  const [activeTab, setActiveTab] = useState<'table' | 'dashboard' | 'images' | 'abusive' | 'support'| 'subscriptions' | 'available' | 'maintenance' | 'booked'>('table');
   
   // Sidebar collapse states
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -75,7 +75,6 @@ export default function AdminDashboard() {
   const [showImageModal, setShowImageModal] = useState(false);
   const [abusiveUsers, setAbusiveUsers] = useState<AbusiveUser[]>([]);
   const [loadingAbusive, setLoadingAbusive] = useState(false);
-  const [blockLoadingId, setBlockLoadingId] = useState<string | null>(null);
   
   // Support chat state
   const [supportChats, setSupportChats] = useState<any[]>([]);
@@ -95,6 +94,19 @@ export default function AdminDashboard() {
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [pendingRefundSubscription, setPendingRefundSubscription] = useState<any>(null);
 
+  // State for units tabs
+  const [availableUnits, setAvailableUnits] = useState<any[]>([]);
+  const [maintenanceUnits, setMaintenanceUnits] = useState<any[]>([]);
+  const [bookedUnits, setBookedUnits] = useState<any[]>([]);
+  const [loadingAvailable, setLoadingAvailable] = useState(false);
+  const [loadingMaintenance, setLoadingMaintenance] = useState(false);
+  const [loadingBooked, setLoadingBooked] = useState(false);
+
+  // Search state for units tabs
+  const [availableSearch, setAvailableSearch] = useState('');
+  const [maintenanceSearch, setMaintenanceSearch] = useState('');
+  const [bookedSearch, setBookedSearch] = useState('');
+
   // Check admin access
   useEffect(() => {
     if (!authLoading) {
@@ -109,7 +121,7 @@ export default function AdminDashboard() {
     
     // Handle URL parameters for tab switching
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['table', 'dashboard', 'images', 'abusive', 'support'].includes(tabParam)) {
+    if (tabParam && ['table', 'dashboard', 'images', 'abusive', 'support', 'subscriptions', 'available', 'maintenance', 'booked'].includes(tabParam)) {
       setActiveTab(tabParam as any);
     }
   }, [user?.role, authLoading, router, searchParams]);
@@ -120,6 +132,19 @@ export default function AdminDashboard() {
       fetchAbusiveUsers();
     }
   }, [token, user?.role]);
+
+  // Fetch units when their respective tabs are active
+  useEffect(() => {
+    if (token && user?.role === 'admin') {
+      if (activeTab === 'available') {
+        fetchAvailableUnits();
+      } else if (activeTab === 'maintenance') {
+        fetchMaintenanceUnits();
+      } else if (activeTab === 'booked') {
+        fetchBookedUnits();
+      }
+    }
+  }, [activeTab, token, user?.role]);
 
   const fetchSupportChats = useCallback(async () => {
     if (!token) return;
@@ -174,8 +199,8 @@ export default function AdminDashboard() {
     if (!token) return;
     setLoadingImages(true);
     try {
-      const res = await apiService.getPendingUnitImages(token) as { data: { pendingUnits?: any[], pendingImages?: any[] } };
-      setPendingUnits(res.data.pendingUnits || res.data.pendingImages || []);
+      const res = await apiService.getPendingUnitsWithDetails(token) as { data: { pendingUnits?: any[] } };
+      setPendingUnits(res.data.pendingUnits || []);
     } catch (err) {
       setPendingUnits([]);
     } finally {
@@ -298,6 +323,45 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchAvailableUnits = async () => {
+    if (!token) return;
+    setLoadingAvailable(true);
+    try {
+      const res = await apiService.getAvailableUnits(token);
+      setAvailableUnits(res.data.units || []);
+    } catch (err) {
+      setAvailableUnits([]);
+    } finally {
+      setLoadingAvailable(false);
+    }
+  };
+
+  const fetchMaintenanceUnits = async () => {
+    if (!token) return;
+    setLoadingMaintenance(true);
+    try {
+      const res = await apiService.getMaintenanceUnits(token);
+      setMaintenanceUnits(res.data.units || []);
+    } catch (err) {
+      setMaintenanceUnits([]);
+    } finally {
+      setLoadingMaintenance(false);
+    }
+  };
+
+  const fetchBookedUnits = async () => {
+    if (!token) return;
+    setLoadingBooked(true);
+    try {
+      const res = await apiService.getBookedUnits(token);
+      setBookedUnits(res.data.units || []);
+    } catch (err) {
+      setBookedUnits([]);
+    } finally {
+      setLoadingBooked(false);
+    }
+  };
+
   // fetching the subscription
   const fetchSubscriptions = async () => {
     if (!token) return;
@@ -416,19 +480,7 @@ export default function AdminDashboard() {
     };
   }, [socket, selectedSupportChat, user?._id]);
 
-  const handleBlockUser = async (userId: string) => {
-    if (!token) return;
-    setBlockLoadingId(userId);
-    try {
-      await apiService.blockUser(userId, token);
-      fetchAbusiveUsers();
-      fetchUsers();
-    } catch (err) {
-      // handle error
-    } finally {
-      setBlockLoadingId(null);
-    }
-  };
+
 
 
 
@@ -663,6 +715,33 @@ export default function AdminDashboard() {
               </svg>
               <p className="text-sm font-semibold">المستخدمون المسيئون</p>
             </button>
+            <button
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${activeTab === 'available' ? (isDarkMode ? 'bg-orange-900 text-orange-300 font-semibold' : 'bg-orange-50 text-orange-600 font-semibold') : (isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-stone-100')}`}
+              onClick={() => setActiveTab('available')}
+            >
+              <svg className={`${activeTab === 'available' ? 'text-orange-500' : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+              </svg>
+              <p className="text-sm font-semibold">الشقق المتاحة</p>
+            </button>
+            <button
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${activeTab === 'maintenance' ? (isDarkMode ? 'bg-orange-900 text-orange-300 font-semibold' : 'bg-orange-50 text-orange-600 font-semibold') : (isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-stone-100')}`}
+              onClick={() => setActiveTab('maintenance')}
+            >
+              <svg className={`${activeTab === 'maintenance' ? 'text-orange-500' : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
+                <path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/>
+              </svg>
+              <p className="text-sm font-semibold">الشقق تحت الصيانة</p>
+            </button>
+            <button
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${activeTab === 'booked' ? (isDarkMode ? 'bg-orange-900 text-orange-300 font-semibold' : 'bg-orange-50 text-orange-600 font-semibold') : (isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-stone-100')}`}
+              onClick={() => setActiveTab('booked')}
+            >
+              <svg className={`${activeTab === 'booked' ? 'text-orange-500' : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
+                <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+              </svg>
+              <p className="text-sm font-semibold">الشقق المحجوزة</p>
+            </button>
             {/* اشتراكات */}
             <button
               className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${activeTab === 'subscriptions' ? (isDarkMode ? 'bg-orange-900 text-orange-300 font-semibold' : 'bg-orange-50 text-orange-600 font-semibold') : (isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-stone-100')}`}
@@ -751,67 +830,122 @@ export default function AdminDashboard() {
               </div>
             ) : activeTab === 'images' ? (
               <div>
-                <h1 className={`text-2xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>صور الشقق قيد المراجعة</h1>
+                <h1 className={`text-2xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>مراجعة الشقق المعلقة</h1>
                 {loadingImages ? (
                   <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>جاري التحميل...</div>
                 ) : pendingUnits.length === 0 ? (
-                  <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>لا توجد صور قيد المراجعة حالياً</div>
+                  <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>لا توجد شقق قيد المراجعة حالياً</div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-right">
-                      <thead className={`text-xs uppercase ${isDarkMode ? 'text-gray-300 bg-gray-800' : 'text-gray-500 bg-gray-50'}`}>
-                        <tr>
-                          <th className="px-4 py-3">الصور</th>
-                          <th className="px-4 py-3">اسم الوحدة</th>
-                          <th className="px-4 py-3">المالك</th>
-                          <th className="px-4 py-3">الإجراءات</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pendingUnits.map((unit) => (
-                          <tr key={unit.unitId} className={`border-b ${isDarkMode ? 'border-gray-700 bg-gray-900 hover:bg-gray-800' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
-                            <td className="py-2 px-4">
-                              <div className="flex gap-2 flex-wrap">
-                                {unit.images.map((img: any, idx: number) => (
-                                  <img
-                                    key={idx}
-                                    src={img.url}
-                                    alt="صورة"
-                                    className="w-24 h-20 object-cover rounded border cursor-pointer hover:scale-105 transition-transform"
-                                    onClick={() => {
-                                      setSelectedImage({ url: img.url, unitName: unit.unitName, ownerName: unit.owner?.name });
-                                      setShowImageModal(true);
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                            </td>
-                            <td className={`py-2 px-4 font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{unit.unitName}</td>
-                            <td className={`py-2 px-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{unit.owner?.name || '-'}</td>
-                            <td className="py-2 px-4">
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
-                                  disabled={imageActionLoading === unit.unitId + 'approveAll'}
-                                  onClick={() => handleApproveAll(unit.unitId)}
-                                >
-                                  {imageActionLoading === unit.unitId + 'approveAll' ? '...' : 'موافقة على كل الصور'}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
-                                  disabled={imageActionLoading === unit.unitId + 'rejectAll'}
-                                  onClick={() => handleRejectAllClick(unit)}
-                                >
-                                  {imageActionLoading === unit.unitId + 'rejectAll' ? '...' : 'رفض كل الصور'}
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {pendingUnits.map((unit) => (
+                      <div key={unit.unitId} className={`rounded-xl shadow-lg p-6 ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+                        {/* Unit Header */}
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{unit.unitName}</h3>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                              المالك: {unit.owner?.name || 'غير محدد'}
+                            </p>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                              نوع الوحدة: {unit.type === 'apartment' ? 'شقة' : 'فيلا'}
+                            </p>
+                          </div>
+                                           <div className={`text-right ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                   <div className="text-2xl font-bold">{unit.pricePerMonth}</div>
+                   <div className="text-sm">جنية/شهر</div>
+                 </div>
+                        </div>
+
+                        {/* Unit Details */}
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>العنوان:</p>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.address}</p>
+                          </div>
+                          <div>
+                            <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>المدينة:</p>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.city}</p>
+                          </div>
+                          <div>
+                            <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>المحافظة:</p>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.governorate}</p>
+                          </div>
+                          <div>
+                            <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>عدد الغرف:</p>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.numRooms}</p>
+                          </div>
+                          <div>
+                            <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>المساحة:</p>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.space} م²</p>
+                          </div>
+                          <div>
+                            <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>التأمين:</p>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.securityDeposit || 0} دينار</p>
+                          </div>
+                        </div>
+
+                        {/* Amenities */}
+                        <div className="mb-4">
+                          <p className={`text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>المرافق:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {unit.isFurnished && <span className={`px-2 py-1 rounded-full text-xs ${isDarkMode ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-800'}`}>مؤثثة</span>}
+                            {unit.hasAC && <span className={`px-2 py-1 rounded-full text-xs ${isDarkMode ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-800'}`}>مكيف</span>}
+                            {unit.hasWifi && <span className={`px-2 py-1 rounded-full text-xs ${isDarkMode ? 'bg-purple-900 text-purple-300' : 'bg-purple-100 text-purple-800'}`}>واي فاي</span>}
+                            {unit.hasTV && <span className={`px-2 py-1 rounded-full text-xs ${isDarkMode ? 'bg-indigo-900 text-indigo-300' : 'bg-indigo-100 text-indigo-800'}`}>تلفاز</span>}
+                            {unit.hasKitchenware && <span className={`px-2 py-1 rounded-full text-xs ${isDarkMode ? 'bg-yellow-900 text-yellow-300' : 'bg-yellow-100 text-yellow-800'}`}>أدوات مطبخ</span>}
+                            {unit.hasHeating && <span className={`px-2 py-1 rounded-full text-xs ${isDarkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-800'}`}>تدفئة</span>}
+                            {unit.hasPool && <span className={`px-2 py-1 rounded-full text-xs ${isDarkMode ? 'bg-cyan-900 text-cyan-300' : 'bg-cyan-100 text-cyan-800'}`}>مسبح</span>}
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        {unit.description && (
+                          <div className="mb-4">
+                            <p className={`text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>الوصف:</p>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} line-clamp-3`}>{unit.description}</p>
+                          </div>
+                        )}
+
+                        {/* Images */}
+                        <div className="mb-4">
+                          <p className={`text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>الصور المعلقة:</p>
+                          <div className="flex gap-2 flex-wrap">
+                            {unit.images.map((img: any, idx: number) => (
+                              <img
+                                key={idx}
+                                src={img.url}
+                                alt="صورة"
+                                className="w-20 h-16 object-cover rounded border cursor-pointer hover:scale-105 transition-transform"
+                                onClick={() => {
+                                  setSelectedImage({ url: img.url, unitName: unit.unitName, ownerName: unit.owner?.name });
+                                  setShowImageModal(true);
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 text-sm"
+                            disabled={imageActionLoading === unit.unitId + 'approveAll'}
+                            onClick={() => handleApproveAll(unit.unitId)}
+                          >
+                            {imageActionLoading === unit.unitId + 'approveAll' ? '...' : 'موافقة على كل الصور'}
+                          </button>
+                          <button
+                            type="button"
+                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 text-sm"
+                            disabled={imageActionLoading === unit.unitId + 'rejectAll'}
+                            onClick={() => handleRejectAllClick(unit)}
+                          >
+                            {imageActionLoading === unit.unitId + 'rejectAll' ? '...' : 'رفض كل الصور'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
                {/* مودال سبب الرفض */}
@@ -892,14 +1026,14 @@ export default function AdminDashboard() {
               <div>
                 <header className="mb-8">
                   <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>المستخدمون ذوو التعليقات المسيئة</h1>
-                  <p className={`mt-1 ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>إدارة المستخدمين الذين لديهم تعليقات مسيئة.</p>
+                  <p className={`mt-1 ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>إدارة المستخدمين الذين لديهم تعليقات مسيئة .</p>
                 </header>
                 
                 <div className={`rounded-xl shadow-sm p-6 border ${isDarkMode ? 'bg-red-900/20 border-red-700' : 'bg-red-50 border-red-200'}`}>
                   {loadingAbusive ? (
                     <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>جاري التحميل...</div>
                   ) : abusiveUsers.length === 0 ? (
-                    <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>لا يوجد مستخدمين لديهم أكثر من 3 تعليقات مسيئة حالياً</div>
+                    <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>لا يوجد مستخدمين لديهم تعليقات مسيئة حالياً</div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm text-right">
@@ -910,7 +1044,7 @@ export default function AdminDashboard() {
                             <th className="px-4 py-3">الدور</th>
                             <th className="px-4 py-3">عدد التعليقات المسيئة</th>
                             <th className="px-4 py-3">الحالة</th>
-                            <th className="px-4 py-3">الإجراءات</th>
+                            <th className="px-4 py-3">معلومات الحظر</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -919,23 +1053,31 @@ export default function AdminDashboard() {
                               <td className={`py-2 px-4 font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{u.name}</td>
                               <td className={`py-2 px-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{u.phone || '-'}</td>
                               <td className={`py-2 px-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{u.role}</td>
-                              <td className={`py-2 px-4 text-center ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{u.abusiveCommentsCount}</td>
+                              <td className={`py-2 px-4 text-center ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                  u.abusiveCommentsCount >= 2 
+                                    ? 'bg-red-100 text-red-800' 
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {u.abusiveCommentsCount}
+                                </span>
+                              </td>
                               <td className="py-2 px-4">
                                 {u.isBlocked ? (
-                                  <span className="text-red-400 font-bold">محظور</span>
+                                  <span className="text-red-400 font-bold">محظور تلقائياً</span>
+                                ) : u.abusiveCommentsCount >= 2 ? (
+                                  <span className="text-orange-400 font-bold">في خطر الحظر</span>
                                 ) : (
                                   <span className="text-green-400 font-bold">نشط</span>
                                 )}
                               </td>
                               <td className="py-2 px-4">
-                                {!u.isBlocked && (
-                                  <button
-                                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50"
-                                    disabled={blockLoadingId === u._id}
-                                    onClick={() => handleBlockUser(u._id)}
-                                  >
-                                    {blockLoadingId === u._id ? '...' : 'بلوك'}
-                                  </button>
+                                {u.isBlocked ? (
+                                  <span className="text-sm text-red-600">تم الحظر بعد التعليق المسيء الثاني</span>
+                                ) : u.abusiveCommentsCount === 1 ? (
+                                  <span className="text-sm text-yellow-600">تحذير أول - التعليق التالي سيؤدي للحظر</span>
+                                ) : (
+                                  <span className="text-sm text-gray-500">-</span>
                                 )}
                               </td>
                             </tr>
@@ -1319,6 +1461,409 @@ export default function AdminDashboard() {
                   )}
                 </div>
               </div>
+            ) : activeTab === 'available' ? (
+              <div className="h-full flex flex-col">
+                <header className="mb-8 flex-shrink-0">
+                  <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>الشقق المتاحة</h1>
+                  <p className={`mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>عرض جميع الشقق المتاحة للإيجار.</p>
+                </header>
+                
+                <div className={`rounded-xl shadow-sm p-6 flex-1 overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  {/* Search Bar */}
+                  <div className="mb-6">
+                    <div className="relative max-w-md">
+                      <input
+                        type="text"
+                        placeholder="البحث باسم الشقة..."
+                        value={availableSearch}
+                        onChange={(e) => setAvailableSearch(e.target.value)}
+                        className={`w-full px-4 py-2 pr-10 rounded-lg border ${isDarkMode ? 'border-gray-600 bg-gray-700 text-gray-300 placeholder-gray-400' : 'border-gray-200 bg-white text-gray-900 placeholder-gray-500'}`}
+                      />
+                      {availableSearch && (
+                        <button
+                          onClick={() => setAvailableSearch('')}
+                          className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <svg className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {loadingAvailable ? (
+                    <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>جاري تحميل الشقق المتاحة...</div>
+                  ) : availableUnits.length === 0 ? (
+                    <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>لا توجد شقق متاحة حالياً</div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {availableUnits
+                        .filter(unit => 
+                          unit.name?.toLowerCase().includes(availableSearch.toLowerCase()) ||
+                          unit.ownerId?.name?.toLowerCase().includes(availableSearch.toLowerCase())
+                        )
+                        .map((unit) => (
+                          <div key={unit._id} className={`rounded-xl shadow-lg p-6 ${isDarkMode ? 'bg-gray-700 border border-gray-600' : 'bg-white border border-gray-200'}`}>
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <h3 className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{unit.name}</h3>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                  المالك: {unit.ownerId?.name || 'غير محدد'}
+                                </p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                  نوع الوحدة: {unit.type === 'apartment' ? 'شقة' : 'فيلا'}
+                                </p>
+                              </div>
+                              <div className={`text-right ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                                <div className="text-2xl font-bold">{unit.pricePerMonth}</div>
+                                <div className="text-sm">جنية/شهر</div>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                              <div>
+                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>العنوان:</p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.address}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>المدينة:</p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.city}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>عدد الغرف:</p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.numRooms}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>المساحة:</p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.space} متر²</p>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 mb-4">
+                              {unit.isFurnished && (
+                                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">مفروشة</span>
+                              )}
+                              {unit.hasAC && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">مكيف</span>
+                              )}
+                              {unit.hasWifi && (
+                                <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">واي فاي</span>
+                              )}
+                              {unit.hasTV && (
+                                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">تلفاز</span>
+                              )}
+                              {unit.hasKitchenware && (
+                                <span className="px-2 py-1 bg-pink-100 text-pink-800 text-xs rounded-full">أدوات مطبخ</span>
+                              )}
+                              {unit.hasHeating && (
+                                <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">تدفئة</span>
+                              )}
+                              {unit.hasPool && (
+                                <span className="px-2 py-1 bg-cyan-100 text-cyan-800 text-xs rounded-full">مسبح</span>
+                              )}
+                            </div>
+
+                            <p className={`text-sm line-clamp-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                              {unit.description}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : activeTab === 'maintenance' ? (
+              <div className="h-full flex flex-col">
+                <header className="mb-8 flex-shrink-0">
+                  <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>الشقق تحت الصيانة</h1>
+                  <p className={`mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>عرض جميع الشقق التي تحتاج صيانة.</p>
+                </header>
+                
+                <div className={`rounded-xl shadow-sm p-6 flex-1 overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  {/* Search Bar */}
+                  <div className="mb-6">
+                    <div className="relative max-w-md">
+                      <input
+                        type="text"
+                        placeholder="البحث باسم الشقة..."
+                        value={maintenanceSearch}
+                        onChange={(e) => setMaintenanceSearch(e.target.value)}
+                        className={`w-full px-4 py-2 pr-10 rounded-lg border ${isDarkMode ? 'border-gray-600 bg-gray-700 text-gray-300 placeholder-gray-400' : 'border-gray-200 bg-white text-gray-900 placeholder-gray-500'}`}
+                      />
+                      {maintenanceSearch && (
+                        <button
+                          onClick={() => setMaintenanceSearch('')}
+                          className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <svg className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {loadingMaintenance ? (
+                    <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>جاري تحميل الشقق تحت الصيانة...</div>
+                  ) : maintenanceUnits.length === 0 ? (
+                    <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>لا توجد شقق تحت الصيانة حالياً</div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {maintenanceUnits
+                        .filter(unit => 
+                          unit.name?.toLowerCase().includes(maintenanceSearch.toLowerCase()) ||
+                          unit.ownerId?.name?.toLowerCase().includes(maintenanceSearch.toLowerCase())
+                        )
+                        .map((unit) => (
+                          <div key={unit._id} className={`rounded-xl shadow-lg p-6 ${isDarkMode ? 'bg-gray-700 border border-gray-600' : 'bg-white border border-gray-200'}`}>
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <h3 className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{unit.name}</h3>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                  المالك: {unit.ownerId?.name || 'غير محدد'}
+                                </p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                  نوع الوحدة: {unit.type === 'apartment' ? 'شقة' : 'فيلا'}
+                                </p>
+                              </div>
+                              <div className={`text-right ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                                <div className="text-2xl font-bold">{unit.pricePerMonth}</div>
+                                <div className="text-sm">جنية/شهر</div>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                              <div>
+                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>العنوان:</p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.address}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>المدينة:</p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.city}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>عدد الغرف:</p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.numRooms}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>المساحة:</p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.space} متر²</p>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 mb-4">
+                              {unit.isFurnished && (
+                                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">مفروشة</span>
+                              )}
+                              {unit.hasAC && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">مكيف</span>
+                              )}
+                              {unit.hasWifi && (
+                                <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">واي فاي</span>
+                              )}
+                              {unit.hasTV && (
+                                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">تلفاز</span>
+                              )}
+                              {unit.hasKitchenware && (
+                                <span className="px-2 py-1 bg-pink-100 text-pink-800 text-xs rounded-full">أدوات مطبخ</span>
+                              )}
+                              {unit.hasHeating && (
+                                <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">تدفئة</span>
+                              )}
+                              {unit.hasPool && (
+                                <span className="px-2 py-1 bg-cyan-100 text-cyan-800 text-xs rounded-full">مسبح</span>
+                              )}
+                            </div>
+
+                            <p className={`text-sm line-clamp-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                              {unit.description}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : activeTab === 'booked' ? (
+              <div className="h-full flex flex-col">
+                <header className="mb-8 flex-shrink-0">
+                  <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>الشقق المحجوزة</h1>
+                  <p className={`mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>عرض جميع الشقق المحجوزة مع معلومات العقود.</p>
+                </header>
+                
+                <div className={`rounded-xl shadow-sm p-6 flex-1 overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  {/* Search Bar */}
+                  <div className="mb-6">
+                    <div className="relative max-w-md">
+                      <input
+                        type="text"
+                        placeholder="البحث باسم الشقة..."
+                        value={bookedSearch}
+                        onChange={(e) => setBookedSearch(e.target.value)}
+                        className={`w-full px-4 py-2 pr-10 rounded-lg border ${isDarkMode ? 'border-gray-600 bg-gray-700 text-gray-300 placeholder-gray-400' : 'border-gray-200 bg-white text-gray-900 placeholder-gray-500'}`}
+                      />
+                      {bookedSearch && (
+                        <button
+                          onClick={() => setBookedSearch('')}
+                          className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <svg className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {loadingBooked ? (
+                    <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>جاري تحميل الشقق المحجوزة...</div>
+                  ) : bookedUnits.length === 0 ? (
+                    <div className={`text-center py-12 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>لا توجد شقق محجوزة حالياً</div>
+                  ) : (
+                    <div className="space-y-6">
+                      {bookedUnits
+                        .filter(unit => 
+                          unit.name?.toLowerCase().includes(bookedSearch.toLowerCase()) ||
+                          unit.ownerId?.name?.toLowerCase().includes(bookedSearch.toLowerCase()) ||
+                          unit.lease?.tenantId?.name?.toLowerCase().includes(bookedSearch.toLowerCase())
+                        )
+                        .map((unit) => (
+                          <div key={unit._id} className={`rounded-xl shadow-lg p-6 ${isDarkMode ? 'bg-gray-700 border border-gray-600' : 'bg-white border border-gray-200'}`}>
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <h3 className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{unit.name}</h3>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                  المالك: {unit.ownerId?.name || 'غير محدد'}
+                                </p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                  نوع الوحدة: {unit.type === 'apartment' ? 'شقة' : 'فيلا'}
+                                </p>
+                              </div>
+                              <div className={`text-right ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>
+                                <div className="text-2xl font-bold">{unit.pricePerMonth}</div>
+                                <div className="text-sm">جنية/شهر</div>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                              <div>
+                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>العنوان:</p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.address}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>المدينة:</p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.city}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>عدد الغرف:</p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.numRooms}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>المساحة:</p>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{unit.space} متر²</p>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 mb-4">
+                              {unit.isFurnished && (
+                                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">مفروشة</span>
+                              )}
+                              {unit.hasAC && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">مكيف</span>
+                              )}
+                              {unit.hasWifi && (
+                                <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">واي فاي</span>
+                              )}
+                              {unit.hasTV && (
+                                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">تلفاز</span>
+                              )}
+                              {unit.hasKitchenware && (
+                                <span className="px-2 py-1 bg-pink-100 text-pink-800 text-xs rounded-full">أدوات مطبخ</span>
+                              )}
+                              {unit.hasHeating && (
+                                <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">تدفئة</span>
+                              )}
+                              {unit.hasPool && (
+                                <span className="px-2 py-1 bg-cyan-100 text-cyan-800 text-xs rounded-full">مسبح</span>
+                              )}
+                            </div>
+
+                            <p className={`text-sm line-clamp-3 mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                              {unit.description}
+                            </p>
+
+                            {/* Lease Information */}
+                            {unit.lease && (
+                              <div className={`mt-6 p-4 rounded-lg ${isDarkMode ? 'bg-gray-600 border border-gray-500' : 'bg-gray-50 border border-gray-200'}`}>
+                                <h4 className={`text-lg font-bold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>معلومات العقد</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>المستأجر:</p>
+                                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      {unit.lease.tenantId?.name || 'غير محدد'}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>المالك:</p>
+                                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      {unit.lease.landlordId?.name || 'غير محدد'}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>مبلغ الإيجار:</p>
+                                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      {unit.lease.rentAmount} جنية/شهر
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>مبلغ التأمين:</p>
+                                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      {unit.lease.depositAmount} جنية
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>تاريخ البداية:</p>
+                                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      {new Date(unit.lease.startDate).toLocaleDateString('ar-EG')}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>تاريخ الانتهاء:</p>
+                                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      {new Date(unit.lease.endDate).toLocaleDateString('ar-EG')}
+                                    </p>
+                                  </div>
+                                  <div className="md:col-span-2">
+                                    <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>شروط الدفع:</p>
+                                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      {unit.lease.paymentTerms}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             ) : (
               <>
                 <header className="mb-8">
@@ -1516,88 +2061,88 @@ export default function AdminDashboard() {
             </div>
 
             <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowRefundModal(false);
-                  setPendingRefundSubscription(null);
-                }}
-                className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors ${isDarkMode ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-              >
-                إلغاء
-              </button>
-              <button
-                onClick={confirmRefundSubscription}
-                disabled={refundLoadingId === pendingRefundSubscription._id}
-                className="flex-1 px-4 py-2 rounded-lg font-semibold bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {refundLoadingId === pendingRefundSubscription._id ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    جاري الاسترداد...
-                  </div>
-                ) : (
-                  'تأكيد الاسترداد'
-                )}
-              </button>
+                <button
+                  onClick={() => {
+                    setShowRefundModal(false);
+                    setPendingRefundSubscription(null);
+                  }}
+                  className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-colors ${isDarkMode ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                >
+                  إلغاء
+                </button>
+                <button
+                  onClick={confirmRefundSubscription}
+                  disabled={refundLoadingId === pendingRefundSubscription._id}
+                  className="flex-1 px-4 py-2 rounded-lg font-semibold bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {refundLoadingId === pendingRefundSubscription._id ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      جاري الاسترداد...
+                    </div>
+                  ) : (
+                    'تأكيد الاسترداد'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {showModal && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className={`rounded-xl shadow-xl p-8 max-w-md w-full relative ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-            <button
-              className={`absolute top-3 right-3 ${isDarkMode ? 'text-gray-400 hover:text-orange-400' : 'text-gray-500 hover:text-orange-600'}`}
-              onClick={() => setShowModal(false)}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <h2 className={`text-xl font-bold mb-4 text-center ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.name}</h2>
-            <div className="mb-4">
-              <p className={`text-sm mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{selectedUser.email}</p>
-              <p className={`text-sm mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{selectedUser.phone}</p>
-            </div>
-            <div className="mb-4 flex flex-col gap-4 items-center">
-              {selectedUser.verificationStatus?.uploadedIdUrl && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">صورة الهوية</p>
-                  <img src={selectedUser.verificationStatus.uploadedIdUrl} alt="ID" className="rounded-lg max-h-40 border" />
-                </div>
-              )}
-              {selectedUser.verificationStatus?.selfieUrl && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">صورة التصوير الشخصي</p>
-                  <img src={selectedUser.verificationStatus.selfieUrl} alt="Selfie" className="rounded-lg max-h-40 border" />
-                </div>
-              )}
-            </div>
-            <div className="flex gap-4 justify-center mt-6">
+        {showModal && selectedUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className={`rounded-xl shadow-xl p-8 max-w-md w-full relative ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
               <button
-                onClick={async () => {
-                  await handleVerificationAction(selectedUser._id, 'approve');
-                  setShowModal(false);
-                }}
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold"
+                className={`absolute top-3 right-3 ${isDarkMode ? 'text-gray-400 hover:text-orange-400' : 'text-gray-500 hover:text-orange-600'}`}
+                onClick={() => setShowModal(false)}
               >
-                تأكيد
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
-              <button
-                onClick={async () => {
-                  await handleVerificationAction(selectedUser._id, 'reject');
-                  setShowModal(false);
-                }}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold"
-              >
-                رفض
-              </button>
+              <h2 className={`text-xl font-bold mb-4 text-center ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.name}</h2>
+              <div className="mb-4">
+                <p className={`text-sm mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{selectedUser.email}</p>
+                <p className={`text-sm mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{selectedUser.phone}</p>
+              </div>
+              <div className="mb-4 flex flex-col gap-4 items-center">
+                {selectedUser.verificationStatus?.uploadedIdUrl && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">صورة الهوية</p>
+                    <img src={selectedUser.verificationStatus.uploadedIdUrl} alt="ID" className="rounded-lg max-h-40 border" />
+                  </div>
+                )}
+                {selectedUser.verificationStatus?.selfieUrl && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">صورة التصوير الشخصي</p>
+                    <img src={selectedUser.verificationStatus.selfieUrl} alt="Selfie" className="rounded-lg max-h-40 border" />
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-4 justify-center mt-6">
+                <button
+                  onClick={async () => {
+                    await handleVerificationAction(selectedUser._id, 'approve');
+                    setShowModal(false);
+                  }}
+                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold"
+                >
+                  تأكيد
+                </button>
+                <button
+                  onClick={async () => {
+                    await handleVerificationAction(selectedUser._id, 'reject');
+                    setShowModal(false);
+                  }}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold"
+                >
+                  رفض
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      <Toaster position="top-center" />
-    </div>
-  );
-}
+        )}
+        <Toaster position="top-center" />
+      </div>
+    );
+  }
