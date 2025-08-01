@@ -132,12 +132,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Fetch latest user data when subscription is updated
         fetchUserData(token);
       };
+      
+      const handleUserBlocked = (data: { userId: string, isBlocked: boolean }) => {
+        console.log('🚫 User blocking event received:', data);
+        
+        // Check if this event is for the current user
+        if (user && data.userId === user._id) {
+          if (data.isBlocked) {
+            // User has been blocked - update state immediately
+            setUser(prev => prev ? { ...prev, isBlocked: true } : null);
+            localStorage.setItem('leasemate_user_blocked', 'true');
+            console.log('🚫 Current user has been blocked in real-time');
+          } else {
+            // User has been unblocked - update state immediately
+            setUser(prev => prev ? { ...prev, isBlocked: false } : null);
+            localStorage.removeItem('leasemate_user_blocked');
+            console.log('✅ Current user has been unblocked in real-time');
+          }
+        }
+      };
+      
       socket.on('subscriptionUpdated', handleSubscriptionUpdated);
+      socket.on('userBlocked', handleUserBlocked);
+      
       return () => {
         socket.off('subscriptionUpdated', handleSubscriptionUpdated);
+        socket.off('userBlocked', handleUserBlocked);
       };
     }
-  }, [socket, token]);
+  }, [socket, token, user]);
 
   const fetchUserData = async (authToken: string) => {
     try {
@@ -152,14 +175,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
+        
+        // Store blocked status in localStorage for immediate access on reload
+        if (userData.isBlocked) {
+          localStorage.setItem('leasemate_user_blocked', 'true');
+        } else {
+          localStorage.removeItem('leasemate_user_blocked');
+        }
+        
         // connectWebSocket(userData._id); // 🧠 Connect after user loads - Moved to useEffect
       } else {
         console.error('❌ Failed to fetch user data:', response.status);
         localStorage.removeItem('leasemate_token');
+        localStorage.removeItem('leasemate_user_blocked');
       }
     } catch (error) {
       console.error('❌ Error fetching user data:', error);
       localStorage.removeItem('leasemate_token');
+      localStorage.removeItem('leasemate_user_blocked');
     }
   };
 
@@ -172,6 +205,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     localStorage.removeItem('leasemate_token');
+    localStorage.removeItem('leasemate_user_blocked');
     setToken(null);
     setUser(null);
     if (socketRef.current) {
