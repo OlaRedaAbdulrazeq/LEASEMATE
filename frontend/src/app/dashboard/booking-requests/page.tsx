@@ -70,7 +70,12 @@ export default function BookingRequestsPage() {
         
         const res = (await apiService.getLandlordBookingRequests()) as any;
         console.log("API Response:", res);
-        setRequests(res.data?.requests || []);
+        const requests = res.data?.requests || [];
+        // Sort requests in descending order (newest first)
+        const sortedRequests = requests.sort((a: BookingRequest, b: BookingRequest) => {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+        setRequests(sortedRequests);
       } catch (err: any) {
         console.error("Error fetching booking requests:", err);
         toast.error(err.message || "فشل في جلب الطلبات");
@@ -286,7 +291,7 @@ export default function BookingRequestsPage() {
                     <td className="py-2 px-4">
                       <div className="flex gap-2">
                         <button
-                          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold"
+                          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold whitespace-nowrap"
                           onClick={() => handleOpenForm(req)}
                         >
                           إنشاء عقد
