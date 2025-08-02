@@ -704,7 +704,7 @@ export default function AdminDashboard() {
               <svg className={`${activeTab === 'images' ? 'text-orange-500' : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} fill="currentColor" height="24px" viewBox="0 0 24 24" width="24px">
                 <path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2Zm-2 0H5V5h14ZM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5Z" />
               </svg>
-              <p className="text-sm font-semibold">مراجعة صور الشقق</p>
+              <p className="text-sm font-semibold">مراجعة الشقق</p>
             </button>
             <button
               className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${activeTab === 'abusive' ? (isDarkMode ? 'bg-orange-900 text-orange-300 font-semibold' : 'bg-orange-50 text-orange-600 font-semibold') : (isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-stone-100')}`}
