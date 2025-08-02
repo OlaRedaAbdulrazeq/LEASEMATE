@@ -802,7 +802,7 @@ export default function AdminDashboard() {
         </aside>
 
         {/* Main Content */}
-        <main className={`flex-1 p-8 ${isDarkMode ? 'bg-gray-900' : 'bg-orange-50'}`}>
+        <main className={`flex-1 p-8 overflow-y-auto h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-orange-50'}`}>
           <div className="max-w-7xl mx-auto">
             {activeTab === 'dashboard' ? (
               <div className="flex flex-col items-center gap-8">
