@@ -4,19 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import React, { useEffect, useState } from 'react';
 import { apiService } from '@/services/api';
-import { Bar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
 import ProtectedRoute from '@/components/ProtectedRoute';
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function ProfilePage() {
   const { user, isLoading } = useAuth();
@@ -68,33 +56,35 @@ export default function ProfilePage() {
     }
   });
 
-  const chartData = {
-    labels: ['إيجابي', 'محايد', 'سلبية'],
-    datasets: [
-      {
-        label: 'عدد المراجعات',
-        data: [positive, neutral, negative],
-        backgroundColor: [
-          '#22c55e', // positive - green
-          '#fbbf24', // neutral - yellow
-          '#ef4444', // negative - red
-        ],
-      },
-    ],
-  };
+  // Calculate overall average rating
+  const totalRating = reviews.reduce((sum, review) => sum + (review.rating || 0), 0);
+  const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
 
-  const chartOptions = {
-    responsive: true,
-    plugins: {
-      legend: { display: false },
-      title: {
-        display: true,
-        text: 'Review Rating Distribution',
-      },
-    },
-    scales: {
-      y: { beginAtZero: true, precision: 0 },
-    },
+  // Function to render stars
+  const renderStars = (rating: number) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    
+    for (let i = 0; i < 5; i++) {
+      if (i < fullStars) {
+        stars.push(
+          <span key={i} className="text-yellow-400 text-xl">★</span>
+        );
+      } else if (i === fullStars && hasHalfStar) {
+        stars.push(
+          <span key={i} className="text-yellow-400 text-xl relative">
+            <span className="absolute inset-0 overflow-hidden w-1/2">★</span>
+            <span className="text-gray-300 dark:text-gray-600">★</span>
+          </span>
+        );
+      } else {
+        stars.push(
+          <span key={i} className="text-gray-300 dark:text-gray-600 text-xl">★</span>
+        );
+      }
+    }
+    return stars;
   };
 
   if (isLoading) {
@@ -128,6 +118,15 @@ export default function ProfilePage() {
               </div>
             )}
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{user.name}</h1>
+            {/* Overall Star Rating */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center">
+                {renderStars(averageRating)}
+              </div>
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {reviews.length > 0 ? `${averageRating.toFixed(1)} (${reviews.length} مراجعة)` : 'لا توجد مراجعات بعد'}
+              </span>
+            </div>
             <span className="text-gray-600 dark:text-gray-300">{user.role === 'landlord' ? 'مالك عقار' : user.role === 'tenant' ? 'مستأجر' : user.role}</span>          </div>
           <div className="space-y-4">
             {/* {user.email && (
@@ -172,24 +171,14 @@ export default function ProfilePage() {
               ) : (
                 <>
                   <div className="mb-8 animate-fade-in">
-                    <Bar data={{
-                      ...chartData,
-                      labels: ['إيجابي', 'محايد', 'سلبية'],
-                      datasets: [{
-                        ...chartData.datasets[0],
-                        label: 'عدد المراجعات',
-                      }],
-                    }} options={{
-                      ...chartOptions,
-                      plugins: {
-                        ...chartOptions.plugins,
-                        title: { ...chartOptions.plugins.title, text: 'توزيع تقييمات المراجعات' },
-                      },
-                    }} />
-                    <div className="flex gap-4 mt-4 justify-center">
-                      <span className="text-green-600 dark:text-green-400 font-semibold bg-green-50 dark:bg-green-900 px-3 py-1 rounded-full">إيجابي: {positive}</span>
-                      <span className="text-yellow-600 dark:text-yellow-400 font-semibold bg-yellow-50 dark:bg-yellow-900 px-3 py-1 rounded-full">محايد: {neutral}</span>
-                      <span className="text-red-600 dark:text-red-400 font-semibold bg-red-50 dark:bg-red-900 px-3 py-1 rounded-full">سلبي: {negative}</span>
+                    <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <p className="text-lg text-gray-800 dark:text-gray-200">
+                        {reviews.length > 0 ? (
+                          `لديك ${Math.round((positive / reviews.length) * 100)}% مراجعات إيجابية، ${Math.round((neutral / reviews.length) * 100)}% مراجعات محايدة، ${Math.round((negative / reviews.length) * 100)}% مراجعات سلبية من ${reviews.length} مستخدم`
+                        ) : (
+                          `لا يوجد مراجعات بعد`
+                        )}
+                      </p>
                     </div>
                   </div>
                   <div className="border-t border-orange-200 dark:border-orange-700 mb-8"></div>
