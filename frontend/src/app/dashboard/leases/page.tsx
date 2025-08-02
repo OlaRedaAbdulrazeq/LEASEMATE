@@ -34,7 +34,12 @@ export default function LeasesPage() {
         "leases" in res.data &&
         "pagination" in res.data
       ) {
-        setLeases(Array.isArray(res.data.leases) ? res.data.leases : []);
+        const leases = Array.isArray(res.data.leases) ? res.data.leases : [];
+        // Sort leases in descending order (newest first)
+        const sortedLeases = leases.sort((a: any, b: any) => {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+        setLeases(sortedLeases);
         const pagination = res.data.pagination as {
           totalPages: number;
           currentPage: number;
