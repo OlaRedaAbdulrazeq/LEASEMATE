@@ -271,6 +271,8 @@ export default function UnitDetailPage() {
                     receiverId={ownerInfo?._id}
                     unitId={unit?._id}
                     receiverName={ownerInfo?.name}
+                    userRole={user?.role}
+                    receiverRole="landlord"
                   />
                 </div>
               </div>
