@@ -14,7 +14,7 @@ const chatSchema = new mongoose.Schema({
   unit: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Unit',
-    required: true
+    required: false
   },
   lastMessage: {
     type: String
