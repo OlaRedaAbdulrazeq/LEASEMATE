@@ -14,6 +14,8 @@ interface ChatBoxProps {
   receiverId?: string;
   unitId?: string;
   receiverName?: string;
+  userRole?: string;
+  receiverRole?: string;
 }
 
 interface Message {
@@ -23,14 +25,14 @@ interface Message {
   createdAt?: string;
 }
 
-const ChatBox: React.FC<ChatBoxProps> = ({ chatId, setChatId, userId, receiverId, unitId, receiverName }) => {
+const ChatBox: React.FC<ChatBoxProps> = ({ chatId, setChatId, userId, receiverId, unitId, receiverName, userRole, receiverRole }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
 
   // معالجة: لو البيانات الأساسية غير متوفرة
-  if (!userId || !receiverId || !unitId) {
+  if (!userId || !receiverId) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <span className={`font-bold text-lg ${theme === 'dark' ? 'text-orange-400' : 'text-orange-500'}`}>
@@ -69,37 +71,69 @@ const ChatBox: React.FC<ChatBoxProps> = ({ chatId, setChatId, userId, receiverId
     if (!text.trim()) return;
     if (!chatId) {
       // أول رسالة: أنشئ شات جديد مع الرسالة
-      const res = await axios.post('http://localhost:5000/api/chat/create-with-message', {
-        tenantId: userId,
-        landlordId: receiverId,
-        unitId,
+      
+      // تحديد من هو المستأجر ومن هو المالك بناءً على الأدوار
+      let tenantId, landlordId;
+      if (userRole === 'tenant' && receiverRole === 'landlord') {
+        tenantId = userId;
+        landlordId = receiverId;
+      } else if (userRole === 'landlord' && receiverRole === 'tenant') {
+        tenantId = receiverId;
+        landlordId = userId;
+      } else {
+        // إذا لم تكن الأدوار محددة، نفترض أن المستخدم الحالي هو المستأجر
+        tenantId = userId;
+        landlordId = receiverId;
+      }
+      
+      const requestData: any = {
+        tenantId,
+        landlordId,
+        senderId: userId,
+        text,
+      };
+      
+      // إضافة unitId - إذا كان فارغ نرسل "profile" للشات من البروفايل
+      requestData.unitId = unitId && unitId.trim() !== '' ? unitId : 'profile';
+      
+      console.log('Sending request data:', requestData);
+      try {
+        const res = await axios.post('http://localhost:5000/api/chat/create-with-message', requestData);
+        console.log('Response received:', res.data);
+        setChatId(res.data.chatId);
+        setMessages([res.data.message]);
+        socket.emit('joinChat', res.data.chatId);
+        socket.emit('sendMessage', {
+          chatId: res.data.chatId,
+          senderId: userId,
+          receiverId,
+          text,
+        });
+        setText('');
+        return;
+      } catch (error: any) {
+        console.error('Error creating chat:', error.response?.data || error.message);
+        alert('حدث خطأ أثناء إنشاء المحادثة: ' + (error.response?.data?.error || error.message));
+        return;
+      }
+    }
+    // إذا كان هناك chatId بالفعل
+    try {
+      await axios.post(`http://localhost:5000/api/chat/${chatId}/messages`, {
         senderId: userId,
         text,
       });
-      setChatId(res.data.chatId);
-      setMessages([res.data.message]);
-      socket.emit('joinChat', res.data.chatId);
       socket.emit('sendMessage', {
-        chatId: res.data.chatId,
+        chatId,
         senderId: userId,
         receiverId,
         text,
       });
       setText('');
-      return;
+    } catch (error: any) {
+      console.error('Error sending message:', error.response?.data || error.message);
+      alert('حدث خطأ أثناء إرسال الرسالة: ' + (error.response?.data?.error || error.message));
     }
-    // إذا كان هناك chatId بالفعل
-    await axios.post(`http://localhost:5000/api/chat/${chatId}/messages`, {
-      senderId: userId,
-      text,
-    });
-    socket.emit('sendMessage', {
-      chatId,
-      senderId: userId,
-      receiverId,
-      text,
-    });
-    setText('');
   };
 
   return (
