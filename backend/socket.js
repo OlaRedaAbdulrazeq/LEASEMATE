@@ -126,7 +126,7 @@ function setupSocket(io) {
               userId: chat.user._id,
               senderId: senderId,
               title: 'رسالة جديدة من فريق الدعم',
-              message: `لديك رسالة جديدة من فريق الدعم: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`,
+              message: 'لديك رسالة جديدة من فريق الدعم',
               type: 'SUPPORT_MESSAGE_TO_USER',
               link: '/dashboard/support-chat',
               isRead: false
@@ -148,7 +148,7 @@ function setupSocket(io) {
                 userId: admin._id,
                 senderId: senderId,
                 title: 'رسالة دعم جديدة من المستخدم',
-                message: `رسالة جديدة من ${sender.name} (${sender.role === 'landlord' ? 'مالك' : 'مستأجر'}): ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`,
+                message: `رسالة جديدة من ${sender.name} (${sender.role === 'landlord' ? 'مالك' : 'مستأجر'})`,
                 type: 'SUPPORT_MESSAGE_TO_ADMIN',
                 link: '/admin/dashboard?tab=support',
                 isRead: false
