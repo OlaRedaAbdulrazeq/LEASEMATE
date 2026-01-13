@@ -1,86 +1,89 @@
-# Developer Guide – LeaseMate Repo
+# LeaseMate
 
-## Clone the Repository
+LeaseMate is a full-featured landlord–tenant platform designed to simplify property management, communication, and rental workflows.  
+The platform provides a modern user experience using **Next.js** on the frontend and a scalable **Express.js** backend.
 
-Open your terminal and run:
+---
 
-```bash
-git clone https://github.com/OlaRedaAbdulrazeq/LEASEMATE.git
-cd LEASEMATE
-```
+## Features
 
-## Switch to the Development Branch
+### 🏠 Unit Management
+- Landlords can add, update, and manage rental units.
+- Units include full details, images, and availability status.
+- Tenants can browse and book available units.
 
-Make sure you’re working on the main development branch called `before-main`:
+### 📄 Booking & Contracts
+- When a tenant books an available unit, a rental contract is created between both parties.
+- Contracts have a defined duration.
+- Upon contract expiration, both landlord and tenant receive notifications to review each other.
+- Only **one review per contract** is allowed.
 
-```bash
-git checkout before-main
-git pull origin before-main
-```
+### ⭐ Reviews & AI Moderation
+- Reviews are monitored using AI to detect offensive content.
+- Offensive reviews are automatically deleted.
+- A warning notification is sent to the user who submitted the review.
+- Repeated violations may result in a platform block.
+- Blocked users can contact the admin to resolve the issue.
 
-## Install Dependencies
+### 💬 Chat System
+- Real-time chat between tenants and landlords.
+- Admin chat is available for reporting issues or resolving disputes.
 
-### For Frontend
+### 🛠 Maintenance Service
+- Tenants can submit maintenance requests.
+- Landlords can view, manage, and respond to maintenance tickets.
+- Maintenance updates trigger real-time notifications.
 
-```bash
-cd frontend
-npm install
-```
+### 🔔 Real-Time Notifications
+- Powered by Socket.IO.
+- Notifications for:
+  - Booking updates
+  - Contract expiration
+  - Reviews
+  - Maintenance requests
+  - Subscription and payment events
 
-### For Backend
+### 💳 Subscriptions & Payments
+- Landlords manage subscriptions using **Stripe Connect**.
+- Subscription is required to list units.
+- Supports refunds based on platform rules.
 
-```bash
-cd ../backend
-npm install
-```
+### 🧑‍💼 Admin Dashboard
+- Admin can view all listed units with their:
+  - Current status
+  - Images
+  - Ownership details
+- Admin approval is required during registration:
+  - Landlords must submit a national ID.
+  - Admin reviews and approves identity verification before account activation.
+- Admin can manage users, handle reports, and resolve disputes.
 
-## Create Your Own Feature Branch
+---
 
-Create a new branch for your feature or task, based off `before-main`. Use a clear, descriptive name:
+## Tech Stack
 
-```bash
-git checkout -b feature/your-branch-name
-```
+- **Frontend:** Next.js  
+- **Backend:** Node.js, Express.js  
+- **Database:** MongoDB  
+- **Real-time Communication:** Socket.IO  
+- **Payments & Subscriptions:** Stripe Connect  
+- **AI Integration:** Offensive content classification  
+- **Authentication:** JWT-based authentication  
 
-> مثال لاسم البرانش:
->
-> `feature/add-login-page`
+---
 
-## Make Your Changes
+## Installation
 
-Edit or add files as needed in your feature branch.
-
-## Stage, Commit, and Push Your Changes
-
-It’s recommended to add each file separately for better traceability and easier debugging if an issue arises.
-
-```bash
-git add path/to/your/file
-git commit -m "وصف مختصر للتغييرات اللي عملتها"
-git push origin feature/your-branch-name
-```
-
-> مثال:
->
-> ```bash
-> git add frontend/src/components/LoginForm.jsx
-> git commit -m "add login form component"
-> git push origin feature/add-login-page
-> ```
-
-## Create a Pull Request (PR)
-
-1. Go to the [GitHub repository](https://github.com/OlaRedaAbdulrazeq/LEASEMATE).
-2. You’ll see a prompt to open a PR for your pushed branch.
-3. Open a PR targeting the `before-main` branch.
-4. Add a clear title and description of your changes.
-5. Request reviewers if needed.
-
-## After PR Approval
-
-Once your PR is approved and merged:
-
-```bash
-git checkout before-main
-git pull origin before-main
-```
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/OlaRedaAbdulrazeq/LEASEMATE.git
+2. Navigate to the project directory:
+   ```bash
+   cd LEASEMATE
+4. Install dependencies:
+   ```bash
+   npm install
+5. Run the application:
+   ```bash
+   npm run dev   
+   
